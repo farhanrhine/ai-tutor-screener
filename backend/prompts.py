@@ -98,10 +98,9 @@ Option B — Move to a new question that naturally tests one of the uncovered di
   - E.g. if they mentioned engineering: "Given your engineering background, how would you explain a concept like ratios to an 8-year-old?"
   - E.g. if they mentioned teaching kids: "Tell me about a moment when a student was really struggling — what did you do?"
 
-Rules:
 - ONE question only. 2-3 sentences max.
 - Reference what they said. Don't ignore their answer.
-- Vary the teaching scenarios — don't repeat the same fractions/bicycle theme.
+- Variety: Invent a unique teaching scenario for every candidate. Never use the same generic math example twice.
 - If {exchange_count} >= 6, wrap toward a close — don't introduce a brand new topic.
 
 Write ONLY your response (what Sarah says). Nothing else."""
@@ -147,22 +146,44 @@ Below is the full interview transcript with candidate {candidate_name}.
 TRANSCRIPT:
 {transcript}
 
-Evaluate the candidate across these 5 dimensions. For each:
-- score: 1-10
-- justification: one clear sentence
-- quote: a direct quote from the transcript (copy exact words the candidate said)
+Evaluate the candidate across these 5 dimensions using the following strict BENCHMARKS:
+
+SCORING BENCHMARKS (1-10):
+- 1-3 (FAIL): Barely understands concepts. Unintelligible or highly broken English. Frustrated or dismissive.
+- 4-6 (AVERAGE): Understandable but with grammatical errors. Provides basic, non-creative analogies. Polite but lacks high enthusiasm.
+- 7-8 (GOOD): Clear, fluent, and confident. Provides creative analogies. Patient and warm. 
+- 9-10 (ELITE): Masterful storyteller. Explains complex math with zero friction. Extreme empathy and Cuemath-style warmth.
+
+FEW-SHOT EXAMPLES FOR CALIBRATION:
+
+EXAMPLE 1 (HIGH SCORER / PASS):
+Candidate: "To explain a concept like 'Variables' in coding to an 8-year-old, I'd compare it to a toy box. You label the box 'MyToys' and put a ball inside. Every time you open the 'MyToys' box, you see what's currently inside. It's just a labeled container for sharing information."
+Sarah: "I love that. What makes a great tutor in your eyes?"
+Candidate: "It's about listening to the kid's logic first. If they think 5+5 is 11, don't just say 'Wrong.' Ask them how they counted it."
+Score Logic: This gets 8/10. Creative, age-appropriate analogy and child-centered mindset.
+
+EXAMPLE 2 (LOW SCORER / FAIL):
+Candidate: "Overfitting is when your loss function is too low on training but high on validation."
+Sarah: "Can you explain that in a way a child could picture?"
+Candidate: "It's a failure of the bias-variance trade-off in high dimensional space."
+Score Logic: This gets 3/10. Uses excessive jargon and fails to adapt to the child's perspective even when prompted.
 
 Dimensions:
-1. communication_clarity — Clear, structured, easy to follow?
-2. warmth_and_patience — Genuine care for students? Empathy? Patience?
-3. ability_to_simplify — Explain complex ideas simply? Good analogies?
-4. english_fluency — Natural, grammatically correct English?
-5. candidate_fit — Overall fit for teaching children math at Cuemath?
+1. communication_clarity — Linear, structured, and easy to follow.
+2. warmth_and_patience — Human empathy; do they sound like a safe mentor for a child?
+3. ability_to_simplify — Can they turn math into everyday stories (toys, sports, food)?
+4. english_fluency — Grammatical correctness and natural flow.
+5. candidate_fit — Overall "Cuemath Vibe" and instructional potential.
+
+EVALUATOR RULES:
+- If a candidate provided a decent analogy (e.g. the exam-night analogy), they MUST score at least 5 in 'Ability to Simplify', even if their English is broken.
+- Do NOT let low English fluency automatically tank the 'Warmth' or 'Clarity' scores if the intent was clear.
+- If the interviewer (Sarah) was repetitive/looping, DO NOT penalize the candidate for getting confused or blunt at the end.
 
 Also provide:
 - overall_score: average of the 5 scores (one decimal)
 - recommendation: exactly one of "Move to next round" / "Do not move forward" / "Consider with reservations"
-- summary: 3-4 sentence paragraph — overall assessment, key strengths, key concerns
+- summary: 3-4 sentence paragraph — overall assessment, key strengths, key concerns. Be objective.
 
 Return ONLY valid JSON, no markdown, no extra text:
 {{
