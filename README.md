@@ -45,7 +45,7 @@ Assessment report with scores, quotes, recommendation
 | **Assessment LLM** | `openai/gpt-oss-120b` via Groq |
 | **Voice Transcription** | Groq Whisper `whisper-large-v3-turbo` |
 | **Live Preview STT** | Web Speech API (Chrome/Edge, runs in parallel) |
-| **Frontend** | Vanilla HTML + CSS + JS (dark mode, glassmorphism) |
+| **Frontend** | Modular ES6 + Vanilla DOM (Editorial Light + Midnight Dark toggles) |
 | **Deployment** | Render.com (free tier, single service) |
 
 ---
@@ -81,8 +81,13 @@ ai-tutor-screener/
 │   ├── index.html        # Interview page (progress ring, dual timer, mic UI)
 │   ├── report.html       # Assessment report (print-ready PDF)
 │   ├── dashboard.html    # Admin dashboard (auto-refreshes every 30s)
-│   ├── style.css         # Design system (dark mode, glassmorphism)
-│   └── app.js            # Voice logic (MediaRecorder + Whisper + Web Speech preview)
+│   ├── style.css         # Design system (Editorial Parchment + Dark mode config)
+│   └── js/               # ES6 Modular Frontend
+│       ├── api.js        # Backend fetch calls
+│       ├── audio.js      # Whisper MediaRecorder + Chrome GC TTS patch
+│       ├── main.js       # Core interview orchestrator
+│       ├── theme.js      # Persistent OS-override theme toggle
+│       └── ui.js         # DOM manipulation & typing animations
 ├── render.yaml           # One-click Render deployment config
 └── pyproject.toml        # uv project config (Python 3.11)
 ```
@@ -137,9 +142,9 @@ Open **http://localhost:8000** in Chrome or Edge.
 1. Push to GitHub
 2. Sign up at [render.com](https://render.com) — no credit card needed
 3. **New Web Service** → connect your repo
-4. Root directory: `backend/`
-5. Build command: `uv sync`
-6. Start command: `uv run uvicorn main:app --host 0.0.0.0 --port $PORT`
+4. Root directory: `.` (leave empty or default)
+5. Build command: `pip install uv && uv sync`
+6. Start command: `cd backend && uv run uvicorn main:app --host 0.0.0.0 --port $PORT`
 7. Add environment variable: `GROQ_API_KEY=your_key`
 8. Deploy ✅
 
@@ -163,6 +168,12 @@ Two things run in parallel when you click the mic:
 2. **Web Speech API** — provides live preview text in the input box
 
 Whisper result takes precedence. Web Speech text is the fallback if transcription fails.
+
+### Production Grade Architecture
+- **Stateless Database Backend:** The system utilizes a worker-safe SQLite persistence layer rather than volatile in-memory caches, enabling horizontal worker scaling and instant session recovery on disconnects.
+- **Context Token Optimization:** Conversational routing paths are strictly injected natively as `system` messages mapping the candidate's exact turn history and runtime constraints, protecting against temporal persona-drift.
+- **Garbage Collection Immunity:** Implemented global state tracking to prevent Chrome's aggressive garbage collection from terminating long `SpeechSynthesisUtterance` queries mid-sentence.
+- **Modular Isolation:** The frontend separates state layers (`api.js`, `audio.js`, `ui.js`) to ensure UI and Media tracking do not mutually lock each other up.
 
 ### Assessment transcript cleaning
 Before sending to the assessment LLM, the transcript is cleaned:
