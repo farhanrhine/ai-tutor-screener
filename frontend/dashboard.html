@@ -5,99 +5,103 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Dashboard — Cuemath AI Tutor Screener</title>
   <meta name="description" content="Admin dashboard for Cuemath AI Tutor Screener — view all past interviews and assessment results." />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css" />
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📋</text></svg>" />
   <style>
     .page { position: relative; z-index: 1; min-height: 100vh; }
 
     /* NAV */
     .nav {
       display: flex; align-items: center; justify-content: space-between;
-      padding: 18px 32px; border-bottom: 1px solid var(--border-glass);
-      background: rgba(8,8,16,0.8); backdrop-filter: blur(20px);
+      padding: 1.25rem 2rem; border-bottom: 1px solid var(--border);
+      background: var(--paper);
       position: sticky; top: 0; z-index: 100;
     }
-    .nav-left { display: flex; align-items: center; gap: 10px; }
-    .nav-logo-dot {
-      width: 32px; height: 32px; border-radius: 8px;
-      background: linear-gradient(135deg, #7c3aed, #a855f7);
-      display: flex; align-items: center; justify-content: center; font-size: 16px;
+    .nav-left { display: flex; align-items: center; gap: 12px; }
+    .nav-logo-icon {
+      width: 28px; height: 28px;
+      color: var(--accent);
     }
-    .nav-text { font-weight: 700; font-size: 1rem; }
-    .nav-sub  { font-size: 0.75rem; color: var(--text-muted); }
+    .nav-logo-icon svg { width: 100%; height: 100%; stroke-width: 2px; }
+    .nav-text { font-family: var(--font-display); font-size: 1.25rem; color: var(--ink); line-height: 1; margin-bottom: 2px; }
+    .nav-sub  { font-size: 0.70rem; color: var(--ink-soft); text-transform: uppercase; letter-spacing: 0.05em; font-weight: 600; }
 
     /* MAIN */
-    main { max-width: 1100px; margin: 0 auto; padding: 40px 24px 80px; }
+    main { max-width: 1100px; margin: 0 auto; padding: 48px 24px 80px; }
 
     /* PAGE HEADER */
     .page-header {
-      display: flex; align-items: flex-end; justify-content: space-between; margin-bottom: 32px; flex-wrap: wrap; gap: 16px;
+      display: flex; align-items: flex-end; justify-content: space-between; margin-bottom: 36px; flex-wrap: wrap; gap: 16px;
     }
-    .page-header h1 { font-size: 1.8rem; margin-bottom: 4px; }
-    .page-header p { font-size: 0.9rem; }
+    .page-header h1 { margin-bottom: 4px; }
+    .page-header p { font-size: 1rem; color: var(--ink-soft); }
 
     /* STATS ROW */
     .stats-row {
-      display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 32px;
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; margin-bottom: 36px;
     }
-    .stat-card { padding: 24px 28px; }
-    .stat-label { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted); margin-bottom: 8px; }
-    .stat-value { font-size: 2.4rem; font-weight: 800; line-height: 1; }
-    .stat-sub   { font-size: 0.8rem; color: var(--text-muted); margin-top: 4px; }
+    .stat-card { padding: 32px 28px; border: 1px solid var(--border); box-shadow: var(--shadow-card); background: var(--paper-card); }
+    .stat-label { font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--ink-muted); margin-bottom: 8px; }
+    .stat-value { font-family: var(--font-display); font-size: 3rem; line-height: 1; color: var(--ink); }
+    .stat-sub   { font-size: 0.85rem; color: var(--ink-soft); margin-top: 8px; font-weight: 500; }
 
     /* TABLE */
-    .table-card { overflow: hidden; }
+    .table-card { overflow: hidden; background: var(--paper-card); border: 1px solid var(--border); box-shadow: var(--shadow-card); border-radius: var(--radius-md); }
     .table-header {
       display: flex; align-items: center; justify-content: space-between;
-      padding: 20px 24px; border-bottom: 1px solid var(--border-glass);
+      padding: 24px 28px; border-bottom: 1px solid var(--border);
     }
-    .table-header h2 { font-size: 1rem; font-weight: 600; }
+    .table-header h2 { font-size: 1.2rem; font-weight: 600; margin: 0; }
+    .table-count { font-size: 0.85rem; font-weight: 500; color: var(--ink-muted); }
 
     .sessions-table { width: 100%; border-collapse: collapse; }
     .sessions-table th {
-      padding: 12px 20px; text-align: left; font-size: 0.75rem; font-weight: 600;
-      text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted);
-      border-bottom: 1px solid var(--border-glass); background: rgba(0,0,0,0.2);
+      padding: 14px 28px; text-align: left; font-size: 0.75rem; font-weight: 600;
+      text-transform: uppercase; letter-spacing: 0.05em; color: var(--ink-soft);
+      border-bottom: 1px solid var(--border-soft); background: var(--paper-warm);
     }
     .sessions-table td {
-      padding: 14px 20px; font-size: 0.88rem; color: var(--text-primary);
-      border-bottom: 1px solid rgba(255,255,255,0.04);
+      padding: 16px 28px; font-size: 0.95rem; color: var(--ink);
+      border-bottom: 1px solid var(--border-soft);
       vertical-align: middle;
     }
-    .sessions-table tr:hover td { background: rgba(255,255,255,0.02); }
+    .sessions-table tr:hover td { background: var(--paper-warm); }
     .sessions-table tr:last-child td { border-bottom: none; }
 
-    .candidate-cell { display: flex; align-items: center; gap: 10px; }
+    .candidate-cell { display: flex; align-items: center; gap: 12px; }
     .cand-avatar {
-      width: 34px; height: 34px; border-radius: 50%; flex-shrink: 0;
-      background: linear-gradient(135deg, rgba(124,58,237,0.3), rgba(168,85,247,0.2));
-      border: 1px solid rgba(124,58,237,0.3);
+      width: 36px; height: 36px; border-radius: 50%; flex-shrink: 0;
+      background: var(--paper-warm);
+      border: 1px solid var(--border);
       display: flex; align-items: center; justify-content: center;
-      font-size: 14px; font-weight: 700; color: var(--accent-light);
+      font-size: 14px; font-family: var(--font-display); color: var(--ink);
     }
-    .cand-name { font-weight: 600; }
-    .cand-date { font-size: 0.75rem; color: var(--text-muted); }
+    .cand-name { font-weight: 500; }
+    .cand-date { font-size: 0.8rem; color: var(--ink-muted); }
 
     .score-pill {
       display: inline-flex; align-items: center; gap: 4px;
       padding: 3px 10px; border-radius: var(--radius-full);
-      font-weight: 700; font-size: 0.85rem;
+      font-weight: 600; font-size: 0.85rem;
     }
-    .score-high { background: rgba(16,185,129,0.15); color: var(--accent-green); }
-    .score-mid  { background: rgba(245,158,11,0.15);  color: var(--accent-amber); }
-    .score-low  { background: rgba(239,68,68,0.15);   color: var(--accent-red);   }
-    .score-none { background: rgba(148,163,184,0.1);  color: var(--text-muted);   }
+    .score-high { background: rgba(43, 122, 80, 0.1); color: var(--accent-green); }
+    .score-mid  { background: rgba(184, 115, 51, 0.1); color: var(--accent-amber); }
+    .score-low  { background: var(--danger-light); color: var(--danger); }
+    .score-none { background: var(--paper-warm); color: var(--ink-muted); }
 
     /* Empty state */
     .empty-state {
       display: flex; flex-direction: column; align-items: center;
       padding: 80px 40px; text-align: center; gap: 16px;
     }
-    .empty-icon { font-size: 48px; }
+    .empty-icon { width: 56px; height: 56px; color: var(--ink-muted); }
+    .empty-icon svg { width: 100%; height: 100%; stroke-width: 1.5px; }
 
     /* Loading skeleton */
     .skeleton {
-      background: linear-gradient(90deg, rgba(255,255,255,0.05) 25%, rgba(255,255,255,0.1) 50%, rgba(255,255,255,0.05) 75%);
+      background: linear-gradient(90deg, var(--paper-warm) 25%, var(--border-soft) 50%, var(--paper-warm) 75%);
       background-size: 200% 100%;
       animation: shimmer 1.5s infinite;
       border-radius: 6px; height: 16px;
@@ -108,6 +112,7 @@
       .sessions-table th:nth-child(4),
       .sessions-table td:nth-child(4) { display: none; }
       .nav { padding: 14px 20px; }
+      .stat-card { padding: 24px 20px; }
     }
     @media (max-width: 480px) {
       .stats-row { grid-template-columns: 1fr; }
@@ -120,13 +125,18 @@
   <!-- NAV -->
   <nav class="nav">
     <div class="nav-left">
-      <div class="nav-logo-dot">🎓</div>
+      <div class="nav-logo-icon">
+        <svg viewBox="0 0 24 24" fill="none" class="icon"><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/><path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5M12 19v3M8 22h8"/></svg>
+      </div>
       <div>
         <div class="nav-text">Cuemath</div>
         <div class="nav-sub">AI Tutor Screener</div>
       </div>
     </div>
-    <a href="index.html" class="btn btn-primary" style="font-size:0.85rem; padding:10px 20px">+ New Interview</a>
+    <a href="index.html" class="btn btn-primary" style="padding:10px 20px">
+      <svg viewBox="0 0 24 24" fill="none" class="icon" style="width:16px;height:16px;margin-right:-4px;"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      New Interview
+    </a>
   </nav>
 
   <main>
@@ -134,40 +144,40 @@
     <!-- Page Header -->
     <div class="page-header animate-fadeIn">
       <div>
-        <h1 class="gradient-text">Dashboard</h1>
+        <h1 class="font-display">Dashboard</h1>
         <p>All tutor screening interviews</p>
       </div>
-      <div id="last-updated" style="font-size:0.8rem; color:var(--text-muted)"></div>
+      <div id="last-updated" style="font-size:0.85rem; color:var(--ink-muted); font-weight:500;"></div>
     </div>
 
     <!-- Stats -->
     <div class="stats-row" id="stats-row">
-      <div class="glass-card stat-card animate-fadeIn">
+      <div class="card stat-card animate-fadeIn">
         <div class="stat-label">Total Interviews</div>
-        <div class="stat-value gradient-text" id="stat-total">—</div>
+        <div class="stat-value" id="stat-total">—</div>
         <div class="stat-sub">All time</div>
       </div>
-      <div class="glass-card stat-card animate-fadeIn" style="animation-delay:0.1s">
+      <div class="card stat-card animate-fadeIn" style="animation-delay:0.1s">
         <div class="stat-label">Average Score</div>
-        <div class="stat-value gradient-text" id="stat-avg">—</div>
+        <div class="stat-value" id="stat-avg">—</div>
         <div class="stat-sub">Out of 10</div>
       </div>
-      <div class="glass-card stat-card animate-fadeIn" style="animation-delay:0.2s">
+      <div class="card stat-card animate-fadeIn" style="animation-delay:0.2s">
         <div class="stat-label">Pass Rate</div>
-        <div class="stat-value gradient-text" id="stat-pass">—</div>
+        <div class="stat-value" id="stat-pass">—</div>
         <div class="stat-sub">Recommended</div>
       </div>
     </div>
 
     <!-- Table -->
-    <div class="glass-card table-card animate-fadeIn" style="animation-delay:0.3s">
+    <div class="card table-card animate-fadeIn" style="animation-delay:0.3s">
       <div class="table-header">
-        <h2>All Interviews</h2>
-        <span id="table-count" style="font-size:0.82rem; color:var(--text-muted)"></span>
+        <h2 class="font-display">All Interviews</h2>
+        <span id="table-count" class="table-count"></span>
       </div>
       <div id="table-body">
         <!-- Loading skeletons -->
-        <div style="padding:20px 24px; display:flex; flex-direction:column; gap:12px">
+        <div style="padding:24px 28px; display:flex; flex-direction:column; gap:16px">
           <div class="skeleton" style="width:80%"></div>
           <div class="skeleton" style="width:60%"></div>
           <div class="skeleton" style="width:70%"></div>
@@ -199,9 +209,9 @@ async function loadDashboard() {
     if (data.sessions.length === 0) {
       tableBody.innerHTML = `
         <div class="empty-state">
-          <div class="empty-icon">🎙️</div>
-          <h3>No interviews yet</h3>
-          <p>Start the first screening interview to see results here.</p>
+          <div class="empty-icon"><svg viewBox="0 0 24 24" fill="none" class="icon"><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/><path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5M12 19v3M8 22h8"/></svg></div>
+          <h3 class="font-display">No interviews yet</h3>
+          <p style="color:var(--ink-soft); font-size:1rem; margin-top:-8px;">Start the first screening interview to see results here.</p>
           <a href="index.html" class="btn btn-primary" style="margin-top:8px">Start Interview</a>
         </div>`;
       return;
@@ -226,6 +236,11 @@ async function loadDashboard() {
     tableBody.innerHTML = '';
     tableBody.appendChild(table);
 
+    const checkIcon = '<svg viewBox="0 0 24 24" fill="none" class="icon" style="width:12px;height:12px;vertical-align:-1px;"><polyline points="20 6 9 17 4 12"/></svg>';
+    const waitIcon = '<svg viewBox="0 0 24 24" fill="none" class="icon" style="width:12px;height:12px;vertical-align:-1px;"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>';
+    const errorIcon = '<svg viewBox="0 0 24 24" fill="none" class="icon" style="width:12px;height:12px;vertical-align:-1px;"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>';
+    const warningIcon = '<svg viewBox="0 0 24 24" fill="none" class="icon" style="width:12px;height:12px;vertical-align:-1px;"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>';
+
     const tbody = table.querySelector('#tbody');
     for (const s of data.sessions) {
       const initials = s.candidate_name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
@@ -234,8 +249,8 @@ async function loadDashboard() {
       });
 
       const statusBadge = s.status === 'completed'
-        ? '<span class="badge badge-green">✓ Completed</span>'
-        : '<span class="badge badge-amber">⏳ In Progress</span>';
+        ? `<span class="badge badge-green">${checkIcon} Completed</span>`
+        : `<span class="badge badge-amber">${waitIcon} In Progress</span>`;
 
       let scoreHtml = '<span class="score-pill score-none">—</span>';
       if (s.overall_score !== null) {
@@ -246,9 +261,9 @@ async function loadDashboard() {
       let recHtml = '—';
       if (s.recommendation) {
         const recMap = {
-          'Move to next round':      { cls: 'badge-green', icon: '✅' },
-          'Do not move forward':     { cls: 'badge-red',   icon: '❌' },
-          'Consider with reservations': { cls: 'badge-amber', icon: '⚠️' },
+          'Move to next round':      { cls: 'badge-green', icon: checkIcon },
+          'Do not move forward':     { cls: 'badge-red',   icon: errorIcon },
+          'Consider with reservations': { cls: 'badge-amber', icon: warningIcon },
         };
         const rm = recMap[s.recommendation] || { cls: 'badge-grey', icon: '•' };
         recHtml = `<span class="badge ${rm.cls}">${rm.icon} ${s.recommendation}</span>`;
@@ -256,7 +271,7 @@ async function loadDashboard() {
 
       const actionHtml = s.status === 'completed'
         ? `<a href="report.html?session_id=${s.id}" class="btn btn-ghost" style="padding:6px 14px; font-size:0.82rem">View Report →</a>`
-        : '<span style="font-size:0.82rem; color:var(--text-muted)">In progress…</span>';
+        : '<span style="font-size:0.85rem; color:var(--ink-muted); font-weight:500;">In progress…</span>';
 
       const tr = document.createElement('tr');
       tr.innerHTML = `
@@ -278,7 +293,7 @@ async function loadDashboard() {
   } catch (err) {
     console.error(err);
     document.getElementById('table-body').innerHTML =
-      '<p style="padding:24px; color:var(--accent-red)">❌ Failed to load data. Is the server running?</p>';
+      '<p style="padding:28px; color:var(--danger); font-weight:500;">Failed to load data. Is the server running?</p>';
   }
 }
 
