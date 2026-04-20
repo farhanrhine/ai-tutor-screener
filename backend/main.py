@@ -69,10 +69,11 @@ async def transcribe_audio(file: UploadFile = File(...)):
     client = AsyncGroq(api_key=GROQ_API_KEY)
     try:
         transcription = await client.audio.transcriptions.create(
-            file=(filename, audio_bytes), # Simpler tuple
+            file=(filename, audio_bytes),
             model=WHISPER_MODEL,
             response_format="json",
             language="en",
+            prompt="The following is a voice response from a prospective Cuemath tutor during a qualitative screening interview. Important vocabulary: Cuemath, math, geometry, algebra, fractions, calculation, curriculum, pedagogy.",
         )
         text = transcription.text.strip() if transcription.text else ""
         return {"text": text}
