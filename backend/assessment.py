@@ -9,7 +9,7 @@ client = AsyncGroq(api_key=GROQ_API_KEY)
 
 # Messages that are system artifacts — not real candidate answers
 _NOISE_PATTERNS = re.compile(
-    r"^\[Candidate (chose to end interview early|ended interview early)\]$",
+    r"^\[(Candidate|System).*\]$",
     re.IGNORECASE,
 )
 

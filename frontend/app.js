@@ -577,7 +577,27 @@ function startTimer() {
     const timeBar = document.getElementById('ctrl-time-bar');
     if (timeBar) timeBar.style.width = `${timePct}%`;
 
+    // Auto-end when time is up
+    if (remaining <= 0) {
+      clearInterval(timerInterval);
+      autoEndInterview();
+    }
+
   }, 1000);
+}
+
+function autoEndInterview() {
+  // Stop mic first if recording
+  if (isRecording) {
+    clearTimeout(silenceTimer);
+    isRecording = false;
+    if (recognition) recognition.stop();
+    stopRecordingUI();
+  }
+  
+  setStatus('idle', '⌛ Time is up!');
+  // Send the auto-end marker to the backend to wrap up
+  sendAnswer('[System: Interview ended automatically due to 7-minute time limit]');
 }
 
 // ============================================================
