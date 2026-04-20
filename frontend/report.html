@@ -164,20 +164,32 @@
     .actions-row .btn { padding: 0.85rem 1.5rem; font-size: 1rem; }
 
     @media print {
+      :root {
+        --ink: #1a1816;
+        --ink-soft: #3d3a36;
+        --ink-muted: #6b6357;
+        --paper: #ffffff;
+        --paper-warm: #f8fafc;
+        --paper-card: #ffffff;
+        --border: #e2e8f0;
+      }
       @page { margin: 18mm 15mm; size: A4; }
       .nav, .actions-row, .transcript-header { display: none !important; }
-      body, .page { background: white !important; color: #111 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; font-size: 12pt; }
+      body, .page { background: white !important; color: var(--ink) !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; font-size: 11pt; }
       .card, .glass-card, .rec-banner, .dim-card, .report-header, .transcript-card {
         background: #fff !important; border: 1px solid #e2e8f0 !important; box-shadow: none !important; break-inside: avoid !important; page-break-inside: avoid !important;
       }
       .font-display { font-family: Georgia, serif !important; }
-      .report-date, .score-label, .status-label, .dim-justification, .t-content, .summary-card p { color: #334155 !important; }
-      .score-number { color: #1e293b !important; font-weight: 700 !important; font-size: 2.2rem !important; }
-      .summary-card h3 { color: #0f172a !important; }
-      .dim-score-badge { border: 1px solid rgba(0,0,0,0.1) !important; }
-      .dim-quote { color: #334155 !important; border-left-color: var(--accent) !important; background: #f8fafc !important; }
+      .report-name { color: var(--ink) !important; opacity: 1 !important; }
+      .report-title { color: var(--ink-soft) !important; }
+      .report-date, .score-label, .status-label, .dim-justification, .t-content, .summary-card p, .dim-name { color: var(--ink-soft) !important; }
+      .score-number { color: var(--ink) !important; font-weight: 700 !important; font-size: 2.2rem !important; }
+      .summary-card h3 { color: var(--ink) !important; }
+      .dim-score-badge { border: 1px solid rgba(0,0,0,0.1) !important; font-weight: 700 !important; }
+      .dim-icon { color: var(--ink-soft) !important; }
+      .dim-quote { color: var(--ink-muted) !important; border-left-color: var(--accent) !important; background: #f8fafc !important; }
       .t-role.aria { color: var(--accent) !important; }
-      .t-role.cand { color: #334155 !important; }
+      .t-role.cand { color: var(--ink-muted) !important; }
       .rec-banner.pass  { background: #f0fdf4 !important; border-color: #86efac !important; color: #166534 !important; }
       .rec-banner.fail  { background: #fef2f2 !important; border-color: #fca5a5 !important; color: #991b1b !important; }
       .rec-banner.maybe { background: #fffbeb !important; border-color: #fcd34d !important; color: #92400e !important; }
