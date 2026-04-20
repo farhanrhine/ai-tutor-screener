@@ -95,7 +95,7 @@ class InterviewEngine:
     async def process_candidate_answer(self, answer: str, time_remaining: str = "07:00") -> dict:
 
         # --- Handle early-end (Manual or System-Auto) ---
-        is_termination = answer.startswith("[") and ("ended" in answer.lower() or "terminate" in answer.lower())
+        is_termination = answer.startswith("[") and any(x in answer.lower() for x in ["end", "stop", "terminate"])
         if is_termination:
             if not self.interview_complete:
                 self.interview_complete = True
