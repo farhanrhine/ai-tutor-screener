@@ -64,10 +64,14 @@ async def transcribe_audio(file: UploadFile = File(...)):
     filename = file.filename or "audio.webm"
     content_type = file.content_type or "audio/webm"
 
+    import io
+    audio_file = io.BytesIO(audio_bytes)
+    audio_file.name = filename
+
     client = AsyncGroq(api_key=GROQ_API_KEY)
     try:
         transcription = await client.audio.transcriptions.create(
-            file=(filename, audio_bytes, content_type),
+            file=(filename, audio_file, content_type),
             model=WHISPER_MODEL,
             response_format="json",
             language="en",
@@ -75,6 +79,7 @@ async def transcribe_audio(file: UploadFile = File(...)):
         text = transcription.text.strip() if transcription.text else ""
         return {"text": text}
     except Exception as e:
+        print(f"[Transcription Error] {str(e)}")
         raise HTTPException(status_code=500, detail=f"Transcription failed: {str(e)}")
 
 
