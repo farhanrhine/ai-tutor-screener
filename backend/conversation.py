@@ -187,7 +187,10 @@ class InterviewEngine:
         if not self.last_sarah_message:
              return "Of course! To get us started, could you tell me a bit about yourself and your background?"
         prompt = REPEAT_PROMPT.format(last_question=self.last_sarah_message)
-        return await self._call_simple(prompt)
+        response = await self._call_simple(prompt)
+        if "hiccup" in response or "catch how to respond" in response:
+            return f"Of course! I was asking: {self.last_sarah_message}"
+        return response
 
     async def _graceful_move_on(self) -> str:
         if self.exchange_count >= MAX_EXCHANGES or not self.uncovered_dimensions:
@@ -255,10 +258,18 @@ class InterviewEngine:
         return await self._groq([{"role": "user", "content": prompt}])
 
     async def _groq(self, messages: list[dict]) -> str:
-        response = await client.chat.completions.create(
-            model=CONVERSATION_MODEL,
-            messages=messages,
-            max_tokens=350,
-            temperature=0.8,
-        )
-        return response.choices[0].message.content.strip()
+        try:
+            response = await client.chat.completions.create(
+                model=CONVERSATION_MODEL,
+                messages=messages,
+                max_tokens=350,
+                temperature=0.8,
+            )
+            content = response.choices[0].message.content.strip()
+            if not content:
+                print("[LLM Error] Returned empty content.")
+                return "I'm sorry, I didn't quite catch how to respond to that. Could we move on to the next topic?"
+            return content
+        except Exception as e:
+            print(f"[LLM Exception] {str(e)}")
+            return "I apologize, my system had a brief hiccup. Let's continue."

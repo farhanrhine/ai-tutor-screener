@@ -413,7 +413,15 @@ function addMessage(text, role) {
 }
 
 async function showAriaMessage(text, enableMicAfter) {
-  if (!text || !text.trim()) return;
+  if (!text || !text.trim()) {
+    if (enableMicAfter) {
+      setProcessing(false);
+      setStatus('idle', 'Ready — your turn');
+      document.getElementById('mic-btn').disabled = false;
+      document.getElementById('mic-label').textContent = 'Click to speak';
+    }
+    return;
+  }
   // Show typing indicator wrap
   document.getElementById('typing-wrap').classList.add('show');
   setStatus('processing', 'Thinking…');
