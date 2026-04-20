@@ -55,7 +55,7 @@ async def transcribe_audio(file: UploadFile = File(...)):
     Returns: {"text": "transcribed text"}
     """
     from groq import AsyncGroq
-    from config import GROQ_API_KEY
+    from config import GROQ_API_KEY, WHISPER_MODEL
 
     audio_bytes = await file.read()
     if not audio_bytes:
@@ -68,7 +68,7 @@ async def transcribe_audio(file: UploadFile = File(...)):
     try:
         transcription = await client.audio.transcriptions.create(
             file=(filename, audio_bytes, content_type),
-            model="whisper-large-v3-turbo",
+            model=WHISPER_MODEL,
             response_format="json",
             language="en",
         )

@@ -112,8 +112,12 @@ Edit `backend/.env`:
 
 ```env
 GROQ_API_KEY=your_groq_api_key_here
+
+# All three models are served via Groq — one API key handles everything
 CONVERSATION_MODEL=openai/gpt-oss-120b
 ASSESSMENT_MODEL=openai/gpt-oss-120b
+WHISPER_MODEL=whisper-large-v3-turbo
+
 DATABASE_URL=./screener.db
 ```
 
