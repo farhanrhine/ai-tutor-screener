@@ -34,12 +34,12 @@ graph TD
 
     subgraph STT [Voice Recognition]
         Audio[Microphone]:::logic
-        Whisper[Groq: Voice to Text]:::groq
+        Whisper[Whisper: Voice to Text]:::groq
     end
 
     subgraph Brain [AI Brain]
-        GPT[Groq: Sarah's Personality]:::groq
-        Llama[Groq: Scoring Expert]:::groq
+        GPT[GPT-OSS: Sarah's Personality]:::groq
+        Llama[Llama: Scoring Expert]:::groq
     end
 
     subgraph Storage [Database & Memory]
