@@ -5,6 +5,13 @@
 
 **[🚀 Live Demo](https://ai-tutor-screener-29ln.onrender.com/)**
 
+> [!IMPORTANT]
+> **Reviewer Notes:**
+> - **Browser:** Use **Chrome or Edge** for the full voice experience (Web Speech live preview).
+> - **Cold Start:** As this is on a free tier, please allow **30-60 seconds** for the first load to "wake up" the server.
+> - **Data Persistence:** The demo uses a volatile SQLite database. Records are reset during redeploys—**please export reports to PDF (Ctrl+P)** to save your results permanently.
+> - **Assessments:** Reports take ~15 seconds to generate in the background after the interview ends.
+
 ---
 
 ## What It Does
@@ -230,9 +237,4 @@ Before sending to the assessment LLM, the transcript is cleaned:
 
 ---
 
-## Notes
 
-- **Chrome / Edge only** — required for full voice experience (Whisper transcription + live preview)
-- **Live Demo (Free Tier):** The app is hosted on Render's free tier. If the browser shows a loading delay, please allow **30-60 seconds** for the instance to "wake up" from sleep.
-- **Data Persistence:** The demonstration uses a volatile SQLite database. Session data is reset during server restarts or redeploys. For production use, a persistent managed database is recommended.
-- **Assessment Generation:** Reports are generated in the background and appear approximately **10–15 seconds** after the interview concludes.
