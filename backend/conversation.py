@@ -5,7 +5,7 @@ from prompts import (
     SYSTEM_PROMPT,
     ASSESSMENT_DIMENSIONS,
     OPENING_PROMPT,
-    NEXT_MOVE_PROMPT,
+    SYSTEM_ROUTING_PROMPT,
     REPEAT_PROMPT,
     DONT_KNOW_PROMPT,
     WRAP_UP_PROMPT,
@@ -134,7 +134,7 @@ class InterviewEngine:
         # Decide: follow-up or next question or wrap-up
         if quality in ("vague", "short") and not self.follow_up_used and not is_frustrated:
             # Use a follow-up — let LLM decide what to dig into
-            response = await self._next_move(answer, time_remaining, force_followup=True)
+            response = await self._next_move(time_remaining, force_followup=True)
             self.follow_up_used = True
 
         else:
@@ -147,7 +147,7 @@ class InterviewEngine:
                 self.interview_complete = True
                 response = await self._wrap_up()
             else:
-                response = await self._next_move(answer, time_remaining, force_followup=False)
+                response = await self._next_move(time_remaining, force_followup=False)
 
         self.last_sarah_message = response
         self.messages.append({"role": "assistant", "content": response})
@@ -195,9 +195,9 @@ class InterviewEngine:
         prompt = DONT_KNOW_PROMPT.format(next_dimension_hint=next_hint)
         return await self._call_with_history(prompt)
 
-    async def _next_move(self, last_answer: str, time_remaining: str, force_followup: bool = False) -> str:
+    async def _next_move(self, time_remaining: str, force_followup: bool = False) -> str:
         """
-        Decide what to ask next using the dynamic NEXT_MOVE_PROMPT.
+        Decide what to ask next using the dynamic SYSTEM_ROUTING_PROMPT.
         Sarah considers the full history, uncovered dimensions, and the clock.
         """
         dim_lines = "\n".join(
@@ -205,11 +205,10 @@ class InterviewEngine:
             for dim in self.uncovered_dimensions
         ) or "All dimensions covered — start wrapping up."
 
-        prompt = NEXT_MOVE_PROMPT.format(
+        prompt = SYSTEM_ROUTING_PROMPT.format(
             candidate_name=self.candidate_name,
             exchange_count=self.exchange_count,
             uncovered_dimensions=dim_lines,
-            last_answer=last_answer,
             time_remaining=time_remaining
         )
 
@@ -243,7 +242,7 @@ class InterviewEngine:
         messages = [
             {"role": "system", "content": SYSTEM_PROMPT},
             *self.messages,
-            {"role": "user", "content": prompt},
+            {"role": "system", "content": prompt},
         ]
         return await self._groq(messages)
 
