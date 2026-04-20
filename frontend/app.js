@@ -30,10 +30,9 @@ const synth = window.speechSynthesis;
 // ============================================================
 
 document.addEventListener('DOMContentLoaded', () => {
-  // Show warning only if MediaRecorder is unavailable (very old browsers)
-  // Chrome, Edge, Firefox, and Safari 14+ all support MediaRecorder + Whisper
-  const hasMediaRecorder = typeof MediaRecorder !== 'undefined';
-  if (!hasMediaRecorder) {
+  // Show warning for non-Chrome/Edge browsers
+  const isSupported = /Chrome|Chromium|Edg/.test(navigator.userAgent);
+  if (!isSupported) {
     document.getElementById('chrome-warning').style.display = 'block';
   }
 

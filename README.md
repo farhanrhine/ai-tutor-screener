@@ -188,8 +188,7 @@ Before sending to the assessment LLM, the transcript is cleaned:
 
 ## Notes
 
-- **Chrome / Edge** — Full experience: Whisper transcription + live preview text while speaking
-- **Firefox / Safari 14+** — Whisper transcription works; no live preview (text appears after you stop speaking)
-- **Very old browsers** — Text input fallback always available
+- **Chrome / Edge only** — required for full voice experience (Whisper transcription + live preview)
+- Other browsers: text input fallback always available
 - SQLite resets on Render free tier redeploy — expected for demo use
 - Assessment generation runs in background (~10–15 seconds after interview ends)
