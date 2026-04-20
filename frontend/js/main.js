@@ -39,6 +39,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const micLabel = document.getElementById('mic-label');
     if (micLabel) micLabel.textContent = 'Type your answer below';
   }
+
+  // Listen for enter key on input box
+  const textInput = document.getElementById('text-input');
+  if (textInput) {
+    textInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') sendTextAnswer();
+    });
+  }
 });
 
 function setProcessing(val) {
@@ -195,38 +203,49 @@ function stopRecording() {
 }
 
 function sendTextAnswer() {
+  if (isProcessing || isSpeaking) return;
+  
   const input = document.getElementById('text-input');
   if (!input) return;
   const text = input.value.trim();
-  if (!text || isProcessing) return;
+  if (!text) return;
+
+  // Immediate Lock
+  setProcessing(true);
 
   if (isRecording) {
     clearTimeout(silenceTimer);
-    isRecording = false;
-    Audio.stopRecordingSession();
+    isRecording = false; 
+    Audio.stopRecordingSession(); 
     UI.setMicRecordingUI(false);
   }
+
   accumulatedTranscript = '';
   input.value = '';
   sendAnswer(text);
 }
 
 async function _transcribeAndSend(blob) {
+  // If we already moved to a manual send lock, ignore this audio stop event
+  if (isProcessing || isSpeaking) return; 
+
   if (!blob || blob.size < 1000) {
     UI.setStatus('idle', 'Ready — your turn');
     return;
   }
+
+  setProcessing(true); // Lock the UI during transcription
   UI.setStatus('processing', 'Transcribing…');
+  
   const textInput = document.getElementById('text-input');
   if (textInput) textInput.value = 'Transcribing your answer…';
-  setProcessing(true);
-
+  
   try {
     const data = await API.fetchTranscribe(blob);
     const text = (data.text || '').trim();
+    
     if (text) {
-      if (textInput) textInput.value = text;
-      setProcessing(false);
+      if (textInput) textInput.value = ''; 
       sendAnswer(text);
     } else {
       throw new Error('Empty transcript from Whisper');
@@ -236,21 +255,25 @@ async function _transcribeAndSend(blob) {
     const fallback = accumulatedTranscript.trim();
     accumulatedTranscript = '';
     if (textInput) textInput.value = '';
-    setProcessing(false);
 
     if (fallback) {
       sendAnswer(fallback);
     } else {
-      UI.setStatus('idle', 'Could not transcribe — please type your answer');
+      setProcessing(false);
+      UI.setStatus('idle', 'Ready — your turn');
     }
   }
 }
 
 async function sendAnswer(text) {
-  if (!sessionId || isProcessing) return;
+  // We only check sessionId and text here; entry points handle isProcessing
+  if (!sessionId || !text || !text.trim()) {
+    setProcessing(false);
+    return;
+  }
 
+  setProcessing(true); 
   UI.addMessage(text, 'candidate');
-  setProcessing(true);
 
   try {
     const ctrlCountdown = document.getElementById('ctrl-countdown');
@@ -263,6 +286,7 @@ async function sendAnswer(text) {
 
     if (data.interview_complete) {
       await showAriaMessage(data.interviewer_response, false);
+      setProcessing(true); // Maintain lock during transition
       await UI.delay(2000);
       UI.showGeneratingScreen();
       clearInterval(timerInterval);
@@ -271,10 +295,10 @@ async function sendAnswer(text) {
       await showAriaMessage(data.interviewer_response, true);
     }
   } catch (err) {
-    setProcessing(false);
-    UI.setStatus('idle', 'Ready');
     UI.addErrorMessage('Something went wrong. Please try again.');
     console.error(err);
+    setProcessing(false);
+    UI.setStatus('idle', 'Ready');
   }
 }
 
@@ -366,13 +390,3 @@ window.toggleMic = toggleMic;
 window.stopRecording = stopRecording;
 window.sendTextAnswer = sendTextAnswer;
 window.confirmEndInterview = confirmEndInterview;
-
-// Listen for enter key on input box
-document.addEventListener('DOMContentLoaded', () => {
-  const textInput = document.getElementById('text-input');
-  if (textInput) {
-    textInput.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') sendTextAnswer();
-    });
-  }
-});
