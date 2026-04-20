@@ -407,14 +407,14 @@ function addMessage(text, role) {
 }
 
 async function showAriaMessage(text, enableMicAfter) {
-  // Show typing indicator
-  document.getElementById('typing-indicator').classList.add('show');
+  // Show typing indicator wrap
+  document.getElementById('typing-wrap').classList.add('show');
   setStatus('processing', '⏳ Thinking…');
   await delay(400);
   document.getElementById('chat-messages').scrollTop = 999999;
 
-  // Typewriter effect
-  document.getElementById('typing-indicator').classList.remove('show');
+  // Start typing
+  document.getElementById('typing-wrap').classList.remove('show');
 
   const chat = document.getElementById('chat-messages');
   const typingWrap = document.getElementById('typing-wrap');
@@ -527,8 +527,10 @@ function setProcessing(val) {
 function updateProgress(current) {
   const safeQ = Math.min(current, MAX_QUESTIONS);
   const answered = Math.max(0, safeQ - 1); // questions fully answered
-  document.getElementById('progress-label').textContent = `Question ${safeQ} of ${MAX_QUESTIONS}`;
-  const pct = Math.min((safeQ / MAX_QUESTIONS) * 100, 100);
+  
+  // Both header and info panel now show "Answered" count for consistency
+  document.getElementById('progress-label').textContent = `${answered} / ${MAX_QUESTIONS} Questions Answered`;
+  const pct = Math.min((answered / MAX_QUESTIONS) * 100, 100);
   document.getElementById('progress-bar').style.width = `${pct}%`;
 
   // Control panel ring + number
