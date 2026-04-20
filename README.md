@@ -29,36 +29,36 @@ graph TD
 
     subgraph Frontend [User Interface]
         User((Candidate)):::candidate
-        UI[Editorial UI]:::logic
+        UI[Interview Screen]:::logic
     end
 
-    subgraph STT [Transcription]
-        Audio[MediaRecorder / Web Audio]:::logic
-        Whisper[Groq: whisper-large-v3-turbo]:::groq
+    subgraph STT [Voice Recognition]
+        Audio[Microphone]:::logic
+        Whisper[Groq: Voice to Text]:::groq
     end
 
-    subgraph Brain [Intelligence]
-        GPT[Groq: gpt-oss-120b]:::groq
-        Llama[Groq: llama-3.3-70b]:::groq
+    subgraph Brain [AI Brain]
+        GPT[Groq: Sarah's Personality]:::groq
+        Llama[Groq: Scoring Expert]:::groq
     end
 
-    subgraph Storage [Persistence]
-        DB[(SQLite / aiosqlite)]:::logic
+    subgraph Storage [Database & Memory]
+        DB[(Secure Multi-Session Storage)]:::logic
     end
 
     %% Flow
-    User -->|Voice Input| Audio
-    Audio -->|Raw Bytes| Whisper
-    Whisper -->|Accurate Text| GPT
+    User -->|Speaking| Audio
+    Audio -->|Audio Data| Whisper
+    Whisper -->|Clear Text| GPT
     
-    GPT <-->|Stateful Context| DB
-    GPT -->|Adaptive Response| UI
-    UI -->|TTS| User
+    GPT <-->|Conversation Memory| DB
+    GPT -->|Sarah's Response| UI
+    UI -->|AI Voice| User
 
     %% Assessment Trigger
-    GPT -->|Turn Limit Reached| Llama
-    Llama -->|Rigorous Assessment| DB
-    DB -->|Static Report| UI
+    GPT -->|Interview Finished| Llama
+    Llama -->|Final Evaluation| DB
+    DB -->|Interview Results| UI
 ```
 
 ---
