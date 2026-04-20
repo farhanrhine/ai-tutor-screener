@@ -67,12 +67,12 @@ async def transcribe_audio(file: UploadFile = File(...)):
 
     import io
     audio_file = io.BytesIO(audio_bytes)
-    audio_file.name = filename
+    audio_file.name = "audio.webm" # Force a valid extension
 
     client = AsyncGroq(api_key=GROQ_API_KEY)
     try:
         transcription = await client.audio.transcriptions.create(
-            file=(filename, audio_file, content_type),
+            file=("audio.webm", audio_file), # Simpler tuple
             model=WHISPER_MODEL,
             response_format="json",
             language="en",

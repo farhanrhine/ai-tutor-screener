@@ -49,7 +49,7 @@ DONT_KNOW_RE = re.compile(
 
 EARLY_END_MARKER = "[Candidate chose to end interview early]"
 
-MAX_EXCHANGES = 6   # Total candidate turns before wrap-up
+MAX_EXCHANGES = 7   # Total candidate turns before wrap-up
 
 
 class InterviewEngine:
@@ -94,8 +94,9 @@ class InterviewEngine:
 
     async def process_candidate_answer(self, answer: str, time_remaining: str = "07:00") -> dict:
 
-        # --- Handle early-end ---
-        if EARLY_END_MARKER in answer:
+        # --- Handle early-end (Manual or System-Auto) ---
+        is_termination = answer.startswith("[") and ("ended" in answer.lower() or "terminate" in answer.lower())
+        if is_termination:
             if not self.interview_complete:
                 self.interview_complete = True
                 response = await self._wrap_up()
@@ -183,6 +184,8 @@ class InterviewEngine:
         return False
 
     async def _repeat(self) -> str:
+        if not self.last_sarah_message:
+             return "Of course! To get us started, could you tell me a bit about yourself and your background?"
         prompt = REPEAT_PROMPT.format(last_question=self.last_sarah_message)
         return await self._call_simple(prompt)
 

@@ -381,6 +381,7 @@ async function sendAnswer(text) {
 // ============================================================
 
 function addMessage(text, role) {
+  if (!text || !text.trim()) return;
   const chat = document.getElementById('chat-messages');
   const typingWrap = document.getElementById('typing-wrap');
 
@@ -412,6 +413,7 @@ function addMessage(text, role) {
 }
 
 async function showAriaMessage(text, enableMicAfter) {
+  if (!text || !text.trim()) return;
   // Show typing indicator wrap
   document.getElementById('typing-wrap').classList.add('show');
   setStatus('processing', '⏳ Thinking…');
