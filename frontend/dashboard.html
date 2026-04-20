@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dashboard — Cuemath AI Tutor Screener</title>
+  <meta name="description" content="Admin dashboard for Cuemath AI Tutor Screener — view all past interviews and assessment results." />
+  <link rel="stylesheet" href="style.css" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📋</text></svg>" />
+  <style>
+    .page { position: relative; z-index: 1; min-height: 100vh; }
+
+    /* NAV */
+    .nav {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 18px 32px; border-bottom: 1px solid var(--border-glass);
+      background: rgba(8,8,16,0.8); backdrop-filter: blur(20px);
+      position: sticky; top: 0; z-index: 100;
+    }
+    .nav-left { display: flex; align-items: center; gap: 10px; }
+    .nav-logo-dot {
+      width: 32px; height: 32px; border-radius: 8px;
+      background: linear-gradient(135deg, #7c3aed, #a855f7);
+      display: flex; align-items: center; justify-content: center; font-size: 16px;
+    }
+    .nav-text { font-weight: 700; font-size: 1rem; }
+    .nav-sub  { font-size: 0.75rem; color: var(--text-muted); }
+
+    /* MAIN */
+    main { max-width: 1100px; margin: 0 auto; padding: 40px 24px 80px; }
+
+    /* PAGE HEADER */
+    .page-header {
+      display: flex; align-items: flex-end; justify-content: space-between; margin-bottom: 32px; flex-wrap: wrap; gap: 16px;
+    }
+    .page-header h1 { font-size: 1.8rem; margin-bottom: 4px; }
+    .page-header p { font-size: 0.9rem; }
+
+    /* STATS ROW */
+    .stats-row {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 32px;
+    }
+    .stat-card { padding: 24px 28px; }
+    .stat-label { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted); margin-bottom: 8px; }
+    .stat-value { font-size: 2.4rem; font-weight: 800; line-height: 1; }
+    .stat-sub   { font-size: 0.8rem; color: var(--text-muted); margin-top: 4px; }
+
+    /* TABLE */
+    .table-card { overflow: hidden; }
+    .table-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 20px 24px; border-bottom: 1px solid var(--border-glass);
+    }
+    .table-header h2 { font-size: 1rem; font-weight: 600; }
+
+    .sessions-table { width: 100%; border-collapse: collapse; }
+    .sessions-table th {
+      padding: 12px 20px; text-align: left; font-size: 0.75rem; font-weight: 600;
+      text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted);
+      border-bottom: 1px solid var(--border-glass); background: rgba(0,0,0,0.2);
+    }
+    .sessions-table td {
+      padding: 14px 20px; font-size: 0.88rem; color: var(--text-primary);
+      border-bottom: 1px solid rgba(255,255,255,0.04);
+      vertical-align: middle;
+    }
+    .sessions-table tr:hover td { background: rgba(255,255,255,0.02); }
+    .sessions-table tr:last-child td { border-bottom: none; }
+
+    .candidate-cell { display: flex; align-items: center; gap: 10px; }
+    .cand-avatar {
+      width: 34px; height: 34px; border-radius: 50%; flex-shrink: 0;
+      background: linear-gradient(135deg, rgba(124,58,237,0.3), rgba(168,85,247,0.2));
+      border: 1px solid rgba(124,58,237,0.3);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 14px; font-weight: 700; color: var(--accent-light);
+    }
+    .cand-name { font-weight: 600; }
+    .cand-date { font-size: 0.75rem; color: var(--text-muted); }
+
+    .score-pill {
+      display: inline-flex; align-items: center; gap: 4px;
+      padding: 3px 10px; border-radius: var(--radius-full);
+      font-weight: 700; font-size: 0.85rem;
+    }
+    .score-high { background: rgba(16,185,129,0.15); color: var(--accent-green); }
+    .score-mid  { background: rgba(245,158,11,0.15);  color: var(--accent-amber); }
+    .score-low  { background: rgba(239,68,68,0.15);   color: var(--accent-red);   }
+    .score-none { background: rgba(148,163,184,0.1);  color: var(--text-muted);   }
+
+    /* Empty state */
+    .empty-state {
+      display: flex; flex-direction: column; align-items: center;
+      padding: 80px 40px; text-align: center; gap: 16px;
+    }
+    .empty-icon { font-size: 48px; }
+
+    /* Loading skeleton */
+    .skeleton {
+      background: linear-gradient(90deg, rgba(255,255,255,0.05) 25%, rgba(255,255,255,0.1) 50%, rgba(255,255,255,0.05) 75%);
+      background-size: 200% 100%;
+      animation: shimmer 1.5s infinite;
+      border-radius: 6px; height: 16px;
+    }
+
+    @media (max-width: 768px) {
+      .stats-row { grid-template-columns: 1fr 1fr; }
+      .sessions-table th:nth-child(4),
+      .sessions-table td:nth-child(4) { display: none; }
+      .nav { padding: 14px 20px; }
+    }
+    @media (max-width: 480px) {
+      .stats-row { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+<div class="page">
+
+  <!-- NAV -->
+  <nav class="nav">
+    <div class="nav-left">
+      <div class="nav-logo-dot">🎓</div>
+      <div>
+        <div class="nav-text">Cuemath</div>
+        <div class="nav-sub">AI Tutor Screener</div>
+      </div>
+    </div>
+    <a href="index.html" class="btn btn-primary" style="font-size:0.85rem; padding:10px 20px">+ New Interview</a>
+  </nav>
+
+  <main>
+
+    <!-- Page Header -->
+    <div class="page-header animate-fadeIn">
+      <div>
+        <h1 class="gradient-text">Dashboard</h1>
+        <p>All tutor screening interviews</p>
+      </div>
+      <div id="last-updated" style="font-size:0.8rem; color:var(--text-muted)"></div>
+    </div>
+
+    <!-- Stats -->
+    <div class="stats-row" id="stats-row">
+      <div class="glass-card stat-card animate-fadeIn">
+        <div class="stat-label">Total Interviews</div>
+        <div class="stat-value gradient-text" id="stat-total">—</div>
+        <div class="stat-sub">All time</div>
+      </div>
+      <div class="glass-card stat-card animate-fadeIn" style="animation-delay:0.1s">
+        <div class="stat-label">Average Score</div>
+        <div class="stat-value gradient-text" id="stat-avg">—</div>
+        <div class="stat-sub">Out of 10</div>
+      </div>
+      <div class="glass-card stat-card animate-fadeIn" style="animation-delay:0.2s">
+        <div class="stat-label">Pass Rate</div>
+        <div class="stat-value gradient-text" id="stat-pass">—</div>
+        <div class="stat-sub">Recommended</div>
+      </div>
+    </div>
+
+    <!-- Table -->
+    <div class="glass-card table-card animate-fadeIn" style="animation-delay:0.3s">
+      <div class="table-header">
+        <h2>All Interviews</h2>
+        <span id="table-count" style="font-size:0.82rem; color:var(--text-muted)"></span>
+      </div>
+      <div id="table-body">
+        <!-- Loading skeletons -->
+        <div style="padding:20px 24px; display:flex; flex-direction:column; gap:12px">
+          <div class="skeleton" style="width:80%"></div>
+          <div class="skeleton" style="width:60%"></div>
+          <div class="skeleton" style="width:70%"></div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<script>
+async function loadDashboard() {
+  try {
+    const res = await fetch('/api/dashboard');
+    const data = await res.json();
+
+    // Stats
+    document.getElementById('stat-total').textContent = data.stats.total_interviews;
+    document.getElementById('stat-avg').textContent   = data.stats.avg_score || '—';
+    document.getElementById('stat-pass').textContent  = data.stats.total_interviews > 0
+      ? `${data.stats.pass_rate}%`
+      : '—';
+
+    document.getElementById('last-updated').textContent =
+      'Updated ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+    // Table
+    const tableBody = document.getElementById('table-body');
+    if (data.sessions.length === 0) {
+      tableBody.innerHTML = `
+        <div class="empty-state">
+          <div class="empty-icon">🎙️</div>
+          <h3>No interviews yet</h3>
+          <p>Start the first screening interview to see results here.</p>
+          <a href="index.html" class="btn btn-primary" style="margin-top:8px">Start Interview</a>
+        </div>`;
+      return;
+    }
+
+    document.getElementById('table-count').textContent = `${data.sessions.length} interview${data.sessions.length !== 1 ? 's' : ''}`;
+
+    const table = document.createElement('table');
+    table.className = 'sessions-table';
+    table.innerHTML = `
+      <thead>
+        <tr>
+          <th>Candidate</th>
+          <th>Status</th>
+          <th>Score</th>
+          <th>Recommendation</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody id="tbody"></tbody>`;
+
+    tableBody.innerHTML = '';
+    tableBody.appendChild(table);
+
+    const tbody = table.querySelector('#tbody');
+    for (const s of data.sessions) {
+      const initials = s.candidate_name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
+      const dateStr = new Date(s.start_time + 'Z').toLocaleDateString('en-GB', {
+        day: 'numeric', month: 'short', year: 'numeric'
+      });
+
+      const statusBadge = s.status === 'completed'
+        ? '<span class="badge badge-green">✓ Completed</span>'
+        : '<span class="badge badge-amber">⏳ In Progress</span>';
+
+      let scoreHtml = '<span class="score-pill score-none">—</span>';
+      if (s.overall_score !== null) {
+        const sc = s.overall_score >= 7 ? 'high' : s.overall_score >= 5 ? 'mid' : 'low';
+        scoreHtml = `<span class="score-pill score-${sc}">${s.overall_score}/10</span>`;
+      }
+
+      let recHtml = '—';
+      if (s.recommendation) {
+        const recMap = {
+          'Move to next round':      { cls: 'badge-green', icon: '✅' },
+          'Do not move forward':     { cls: 'badge-red',   icon: '❌' },
+          'Consider with reservations': { cls: 'badge-amber', icon: '⚠️' },
+        };
+        const rm = recMap[s.recommendation] || { cls: 'badge-grey', icon: '•' };
+        recHtml = `<span class="badge ${rm.cls}">${rm.icon} ${s.recommendation}</span>`;
+      }
+
+      const actionHtml = s.status === 'completed'
+        ? `<a href="report.html?session_id=${s.id}" class="btn btn-ghost" style="padding:6px 14px; font-size:0.82rem">View Report →</a>`
+        : '<span style="font-size:0.82rem; color:var(--text-muted)">In progress…</span>';
+
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>
+          <div class="candidate-cell">
+            <div class="cand-avatar">${initials}</div>
+            <div>
+              <div class="cand-name">${escapeHtml(s.candidate_name)}</div>
+              <div class="cand-date">${dateStr}</div>
+            </div>
+          </div>
+        </td>
+        <td>${statusBadge}</td>
+        <td>${scoreHtml}</td>
+        <td>${recHtml}</td>
+        <td>${actionHtml}</td>`;
+      tbody.appendChild(tr);
+    }
+  } catch (err) {
+    console.error(err);
+    document.getElementById('table-body').innerHTML =
+      '<p style="padding:24px; color:var(--accent-red)">❌ Failed to load data. Is the server running?</p>';
+  }
+}
+
+function escapeHtml(text) {
+  return text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+loadDashboard();
+// Auto-refresh every 30 seconds
+setInterval(loadDashboard, 30000);
+</script>
+</body>
+</html>

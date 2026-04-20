@@ -1,0 +1,483 @@
+/* ============================================================
+   app.js — AI Tutor Screener Frontend Logic
+   ============================================================ */
+
+const BACKEND_URL = ''; // Same origin — FastAPI serves frontend
+const API = (path) => `${BACKEND_URL}/api${path}`;
+
+// --- State ---
+let sessionId = null;
+let isRecording = false;
+let isSpeaking = false;
+let isProcessing = false;
+let questionCount = 0;
+const MAX_QUESTIONS = 6;
+let timerInterval = null;
+let timerSeconds = 0;
+let silenceTimer = null;
+
+// --- Web Speech API ---
+const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+let recognition = null;
+let hasSpeechAPI = !!SpeechRecognition;
+const synth = window.speechSynthesis;
+
+// ============================================================
+// INIT
+// ============================================================
+
+document.addEventListener('DOMContentLoaded', () => {
+  // Chrome/Edge check
+  const isChrome = /Chrome|Chromium|Edg/.test(navigator.userAgent);
+  if (!isChrome && !hasSpeechAPI) {
+    document.getElementById('chrome-warning').style.display = 'block';
+  }
+
+  // Enter key on name input
+  document.getElementById('candidate-name').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') startInterview();
+  });
+
+  // If speech not available, show text input by default
+  if (!hasSpeechAPI) {
+    document.getElementById('text-fallback').classList.add('show');
+    document.getElementById('mic-btn').disabled = true;
+    document.getElementById('mic-label').textContent = 'Type your answer below';
+  }
+});
+
+// ============================================================
+// START INTERVIEW
+// ============================================================
+
+async function startInterview() {
+  const nameInput = document.getElementById('candidate-name');
+  const name = nameInput.value.trim();
+  if (!name) {
+    nameInput.focus();
+    nameInput.style.borderColor = 'var(--accent-red)';
+    setTimeout(() => nameInput.style.borderColor = '', 1500);
+    return;
+  }
+
+  const btn = document.getElementById('start-btn');
+  btn.disabled = true;
+  btn.textContent = 'Starting…';
+
+  try {
+    const res = await fetch(API('/session/start'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ candidate_name: name }),
+    });
+    if (!res.ok) throw new Error(await res.text());
+    const data = await res.json();
+
+    sessionId = data.session_id;
+
+    // Switch to interview screen
+    document.getElementById('welcome-screen').style.display = 'none';
+    document.getElementById('interview-screen').style.display = 'block';
+    document.getElementById('nav-progress').style.display = 'flex';
+    document.getElementById('nav-timer').style.display = 'block';
+
+    startTimer();
+    updateProgress(1);
+
+    // Show opening message
+    await showAriaMessage(data.opening_message, true);
+
+  } catch (err) {
+    btn.disabled = false;
+    btn.textContent = 'Start Interview →';
+    alert('Failed to connect. Please check your connection and try again.');
+    console.error(err);
+  }
+}
+
+// ============================================================
+// MIC TOGGLE
+// ============================================================
+
+function toggleMic() {
+  if (isProcessing || isSpeaking) return;
+  if (isRecording) {
+    stopRecording();
+  } else {
+    startRecording();
+  }
+}
+
+function startRecording() {
+  if (!hasSpeechAPI) return;
+
+  recognition = new SpeechRecognition();
+  recognition.continuous = false;
+  recognition.interimResults = false;
+  recognition.lang = 'en-US';
+
+  recognition.onstart = () => {
+    isRecording = true;
+    setStatus('listening', '🎙️ Listening…');
+    document.getElementById('mic-btn').classList.add('recording');
+    document.getElementById('mic-btn').innerHTML = '⏹️';
+    document.getElementById('mic-label').textContent = 'Click to stop';
+    document.getElementById('waveform').classList.add('show');
+    document.getElementById('ring1').style.display = 'block';
+    document.getElementById('ring2').style.display = 'block';
+
+    // Silence timeout — 12 seconds
+    silenceTimer = setTimeout(() => {
+      if (isRecording) {
+        setStatus('idle', 'Ready');
+        document.getElementById('mic-label').textContent = 'Click mic when ready';
+        recognition.stop();
+      }
+    }, 12000);
+  };
+
+  recognition.onresult = (event) => {
+    clearTimeout(silenceTimer);
+    const transcript = event.results[0][0].transcript.trim();
+    if (transcript) {
+      stopRecordingUI();
+      sendAnswer(transcript);
+    }
+  };
+
+  recognition.onerror = (event) => {
+    clearTimeout(silenceTimer);
+    stopRecordingUI();
+    if (event.error !== 'no-speech') {
+      console.error('Speech error:', event.error);
+      // Show text fallback on persistent error
+      document.getElementById('text-fallback').classList.add('show');
+    }
+    setStatus('idle', 'Ready');
+  };
+
+  recognition.onend = () => {
+    clearTimeout(silenceTimer);
+    stopRecordingUI();
+  };
+
+  recognition.start();
+}
+
+function stopRecording() {
+  if (recognition) recognition.stop();
+  stopRecordingUI();
+}
+
+function stopRecordingUI() {
+  isRecording = false;
+  document.getElementById('mic-btn').classList.remove('recording');
+  document.getElementById('mic-btn').innerHTML = '🎙️';
+  document.getElementById('mic-label').textContent = 'Click to speak';
+  document.getElementById('waveform').classList.remove('show');
+  document.getElementById('ring1').style.display = 'none';
+  document.getElementById('ring2').style.display = 'none';
+}
+
+// ============================================================
+// SEND ANSWER
+// ============================================================
+
+function sendTextAnswer() {
+  const input = document.getElementById('text-input');
+  const text = input.value.trim();
+  if (!text || isProcessing) return;
+  input.value = '';
+  sendAnswer(text);
+}
+
+async function sendAnswer(text) {
+  if (!sessionId || isProcessing) return;
+
+  // Show candidate message
+  addMessage(text, 'candidate');
+  setProcessing(true);
+
+  try {
+    const res = await fetch(API('/session/message'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ session_id: sessionId, candidate_message: text }),
+    });
+    if (!res.ok) throw new Error(await res.text());
+    const data = await res.json();
+
+    questionCount++;
+    updateProgress(questionCount + 1);
+
+    if (data.interview_complete) {
+      await showAriaMessage(data.interviewer_response, false);
+      await delay(2000);
+      showGeneratingScreen();
+      pollForReport();
+    } else {
+      await showAriaMessage(data.interviewer_response, true);
+    }
+
+  } catch (err) {
+    setProcessing(false);
+    setStatus('idle', 'Ready');
+    addErrorMessage('Something went wrong. Please try again.');
+    console.error(err);
+  }
+}
+
+// ============================================================
+// MESSAGES
+// ============================================================
+
+function addMessage(text, role) {
+  const chat = document.getElementById('chat-messages');
+  const typingWrap = document.getElementById('typing-wrap');
+
+  const wrap = document.createElement('div');
+  wrap.className = `message-wrap ${role === 'candidate' ? 'candidate' : ''}`;
+
+  const avatar = document.createElement('div');
+  avatar.className = `msg-avatar ${role === 'aria' ? 'aria-av' : 'cand-av'}`;
+  avatar.textContent = role === 'aria' ? 'A' : '👤';
+
+  const bubble = document.createElement('div');
+  bubble.className = `message-bubble ${role === 'aria' ? 'aria-msg' : 'cand-msg'}`;
+
+  const msgDiv = document.createElement('div');
+  msgDiv.textContent = text;
+
+  const timeDiv = document.createElement('div');
+  timeDiv.className = 'msg-time';
+  timeDiv.textContent = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+  bubble.appendChild(msgDiv);
+  bubble.appendChild(timeDiv);
+  wrap.appendChild(avatar);
+  wrap.appendChild(bubble);
+
+  // Insert before typing indicator
+  chat.insertBefore(wrap, typingWrap);
+  chat.scrollTop = chat.scrollHeight;
+}
+
+async function showAriaMessage(text, enableMicAfter) {
+  // Show typing indicator
+  document.getElementById('typing-indicator').classList.add('show');
+  setStatus('processing', '⏳ Thinking…');
+  await delay(400);
+  document.getElementById('chat-messages').scrollTop = 999999;
+
+  // Typewriter effect
+  document.getElementById('typing-indicator').classList.remove('show');
+
+  const chat = document.getElementById('chat-messages');
+  const typingWrap = document.getElementById('typing-wrap');
+
+  const wrap = document.createElement('div');
+  wrap.className = 'message-wrap';
+
+  const avatar = document.createElement('div');
+  avatar.className = 'msg-avatar aria-av';
+  avatar.textContent = 'A';
+
+  const bubble = document.createElement('div');
+  bubble.className = 'message-bubble aria-msg';
+
+  const msgDiv = document.createElement('div');
+  const timeDiv = document.createElement('div');
+  timeDiv.className = 'msg-time';
+  timeDiv.textContent = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+  bubble.appendChild(msgDiv);
+  bubble.appendChild(timeDiv);
+  wrap.appendChild(avatar);
+  wrap.appendChild(bubble);
+  chat.insertBefore(wrap, typingWrap);
+
+  // Typewriter
+  setStatus('speaking', '🔊 Speaking…');
+  speakText(text);
+  await typewriter(msgDiv, text);
+  chat.scrollTop = chat.scrollHeight;
+
+  // Wait for speech to finish, then enable mic
+  if (enableMicAfter) {
+    setProcessing(false);
+    setStatus('idle', 'Ready — your turn');
+    document.getElementById('mic-btn').disabled = false;
+    document.getElementById('mic-label').textContent = 'Click to speak';
+  }
+}
+
+function addErrorMessage(text) {
+  const chat = document.getElementById('chat-messages');
+  const div = document.createElement('div');
+  div.style.cssText = 'text-align:center; font-size:0.82rem; color:var(--accent-red); padding:8px; animation:fadeIn 0.3s ease';
+  div.textContent = `⚠️ ${text}`;
+  chat.appendChild(div);
+  chat.scrollTop = chat.scrollHeight;
+}
+
+// ============================================================
+// TYPEWRITER EFFECT
+// ============================================================
+
+async function typewriter(el, text, speed = 18) {
+  el.textContent = '';
+  for (let i = 0; i < text.length; i++) {
+    el.textContent += text[i];
+    if (i % 3 === 0) await delay(speed); // batch chars for speed
+  }
+}
+
+// ============================================================
+// SPEECH SYNTHESIS
+// ============================================================
+
+function speakText(text) {
+  if (!synth) return;
+  synth.cancel();
+  const utter = new SpeechSynthesisUtterance(text);
+  utter.rate = 1.0;
+  utter.pitch = 1.05;
+  utter.volume = 1;
+
+  // Try to get a good female voice
+  const voices = synth.getVoices();
+  const preferred = voices.find(v =>
+    v.name.includes('Samantha') || v.name.includes('Google UK English Female') ||
+    v.name.includes('Microsoft Zira') || v.name.includes('Female')
+  ) || voices.find(v => v.lang.startsWith('en'));
+  if (preferred) utter.voice = preferred;
+
+  utter.onstart = () => { isSpeaking = true; };
+  utter.onend = () => {
+    isSpeaking = false;
+    setStatus('idle', 'Ready — your turn');
+  };
+  synth.speak(utter);
+}
+
+// ============================================================
+// STATUS / PROGRESS
+// ============================================================
+
+function setStatus(type, label) {
+  const dot = document.getElementById('status-dot');
+  const lbl = document.getElementById('status-label');
+  dot.className = `status-dot ${type}`;
+  lbl.textContent = label;
+}
+
+function setProcessing(val) {
+  isProcessing = val;
+  const micBtn = document.getElementById('mic-btn');
+  const textInput = document.getElementById('text-input');
+  micBtn.disabled = val;
+  if (textInput) textInput.disabled = val;
+  if (val) setStatus('processing', '⏳ Processing…');
+}
+
+function updateProgress(current) {
+  const safeQ = Math.min(current, MAX_QUESTIONS);
+  document.getElementById('progress-label').textContent = `Question ${safeQ} of ${MAX_QUESTIONS}`;
+  const pct = Math.min((safeQ / MAX_QUESTIONS) * 100, 100);
+  document.getElementById('progress-bar').style.width = `${pct}%`;
+}
+
+function startTimer() {
+  timerSeconds = 0;
+  timerInterval = setInterval(() => {
+    timerSeconds++;
+    const m = String(Math.floor(timerSeconds / 60)).padStart(2, '0');
+    const s = String(timerSeconds % 60).padStart(2, '0');
+    document.getElementById('nav-timer').textContent = `${m}:${s}`;
+  }, 1000);
+}
+
+// ============================================================
+// END INTERVIEW
+// ============================================================
+
+function confirmEndInterview() {
+  if (confirm('End the interview early? A partial assessment will still be generated.')) {
+    sendAnswer('[Candidate ended interview early]');
+  }
+}
+
+// ============================================================
+// GENERATING / POLLING
+// ============================================================
+
+function showGeneratingScreen() {
+  clearInterval(timerInterval);
+  document.getElementById('generating-screen').classList.add('show');
+}
+
+function pollForReport() {
+  const interval = setInterval(async () => {
+    try {
+      const res = await fetch(API(`/session/report/${sessionId}`));
+      const data = await res.json();
+      if (data.status === 'ready') {
+        clearInterval(interval);
+        window.location.href = `report.html?session_id=${sessionId}`;
+      }
+    } catch (err) {
+      console.error('Poll error:', err);
+    }
+  }, 3000);
+}
+
+// ============================================================
+// UTILS
+// ============================================================
+
+function delay(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+
+// ============================================================
+// // ELEVENLABS UPGRADE
+// ============================================================
+// Uncomment below and add a /api/tts backend endpoint to use ElevenLabs
+//
+// async function speakTextElevenLabs(text) {
+//   const res = await fetch(API('/tts'), {
+//     method: 'POST',
+//     headers: { 'Content-Type': 'application/json' },
+//     body: JSON.stringify({ text }),
+//   });
+//   const blob = await res.blob();
+//   const url = URL.createObjectURL(blob);
+//   const audio = new Audio(url);
+//   isSpeaking = true;
+//   audio.onended = () => { isSpeaking = false; URL.revokeObjectURL(url); };
+//   await audio.play();
+// }
+
+
+// ============================================================
+// // WHISPER UPGRADE
+// ============================================================
+// Uncomment below and add a /api/transcribe backend endpoint
+//
+// async function recordAndTranscribe() {
+//   const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+//   const recorder = new MediaRecorder(stream);
+//   const chunks = [];
+//   recorder.ondataavailable = e => chunks.push(e.data);
+//   recorder.onstop = async () => {
+//     const blob = new Blob(chunks, { type: 'audio/webm' });
+//     const formData = new FormData();
+//     formData.append('file', blob, 'audio.webm');
+//     const res = await fetch(API('/transcribe'), { method: 'POST', body: formData });
+//     const { text } = await res.json();
+//     sendAnswer(text);
+//   };
+//   recorder.start();
+//   setTimeout(() => recorder.stop(), 10000); // 10 sec max
+// }
