@@ -89,6 +89,7 @@ async def generate_assessment(session_id: str) -> dict:
     #    - Low temperature for consistent structured JSON output
     response = await client.chat.completions.create(
         model=ASSESSMENT_MODEL,
+        response_format={"type": "json_object"},
         messages=[
             {
                 "role": "system",

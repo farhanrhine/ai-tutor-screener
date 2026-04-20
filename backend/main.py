@@ -15,6 +15,7 @@ from database import (
     get_messages,
     get_assessment,
     get_all_sessions,
+    update_session_status,
 )
 from conversation import create_engine, get_engine, remove_engine
 from assessment import generate_assessment
@@ -62,17 +63,13 @@ async def transcribe_audio(file: UploadFile = File(...)):
     if not audio_bytes:
         raise HTTPException(status_code=400, detail="Empty audio file.")
 
-    filename = file.filename or "audio.webm"
-    content_type = file.content_type or "audio/webm"
-
-    import io
-    audio_file = io.BytesIO(audio_bytes)
-    audio_file.name = "audio.webm" # Force a valid extension
+    ext = file.filename.split(".")[-1] if file.filename and "." in file.filename else "webm"
+    filename = f"audio.{ext}"
 
     client = AsyncGroq(api_key=GROQ_API_KEY)
     try:
         transcription = await client.audio.transcriptions.create(
-            file=("audio.webm", audio_file), # Simpler tuple
+            file=(filename, audio_bytes), # Simpler tuple
             model=WHISPER_MODEL,
             response_format="json",
             language="en",
@@ -124,6 +121,9 @@ async def send_message(req: MessageRequest, background_tasks: BackgroundTasks):
         for msg in messages:
             role = "assistant" if msg["role"] == "interviewer" else "user"
             engine.messages.append({"role": role, "content": msg["content"]})
+            if role == "user":
+                engine.exchange_count += 1
+                engine._mark_dimension_progress()
 
     result = await engine.process_candidate_answer(req.candidate_message.strip(), req.time_remaining)
 
@@ -133,6 +133,7 @@ async def send_message(req: MessageRequest, background_tasks: BackgroundTasks):
     # If interview complete, trigger assessment generation in background
     if result["interview_complete"]:
         remove_engine(req.session_id)
+        await update_session_status(req.session_id, "generating")
         background_tasks.add_task(generate_assessment, req.session_id)
 
     return result

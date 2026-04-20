@@ -73,6 +73,16 @@ async def complete_session(session_id: str):
         await db.commit()
 
 
+async def update_session_status(session_id: str, status: str):
+    """Update a session's status."""
+    async with aiosqlite.connect(DATABASE_URL) as db:
+        await db.execute(
+            "UPDATE sessions SET status = ? WHERE id = ?",
+            (status, session_id),
+        )
+        await db.commit()
+
+
 async def save_message(session_id: str, role: str, content: str):
     """Save a single message (interviewer or candidate)."""
     now = datetime.utcnow().isoformat()
