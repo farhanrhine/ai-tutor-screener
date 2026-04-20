@@ -14,21 +14,8 @@ from prompts import (
 
 client = AsyncGroq(api_key=GROQ_API_KEY)
 
-_engines: dict[str, "InterviewEngine"] = {}
-
-
-def get_engine(session_id: str) -> "InterviewEngine | None":
-    return _engines.get(session_id)
-
-
-def create_engine(session_id: str, candidate_name: str) -> "InterviewEngine":
-    engine = InterviewEngine(session_id, candidate_name)
-    _engines[session_id] = engine
-    return engine
-
-
-def remove_engine(session_id: str):
-    _engines.pop(session_id, None)
+def create_engine(session_id: str, candidate_name: str, exchange_count: int = 0, uncovered_dimensions: list = None, messages: list = None) -> "InterviewEngine":
+    return InterviewEngine(session_id, candidate_name, exchange_count, uncovered_dimensions, messages)
 
 
 # ---------------------------------------------------------------
@@ -60,22 +47,29 @@ class InterviewEngine:
     - Wraps up after MAX_EXCHANGES turns or when dimensions are covered.
     """
 
-    def __init__(self, session_id: str, candidate_name: str):
+    def __init__(self, session_id: str, candidate_name: str, exchange_count: int = 0, uncovered_dimensions: list = None, messages: list = None):
         self.session_id = session_id
         self.candidate_name = candidate_name
 
-        # Full conversation history — every message sent to the LLM
-        self.messages: list[dict] = []
+        self.messages = messages or []
+        
+        if uncovered_dimensions is None:
+            self.uncovered_dimensions = list(ASSESSMENT_DIMENSIONS.keys())
+        else:
+            self.uncovered_dimensions = uncovered_dimensions
+            
+        self.covered_dimensions = []
 
-        # Dimension tracking: starts uncovered, marked covered when LLM addresses them
-        self.uncovered_dimensions: list[str] = list(ASSESSMENT_DIMENSIONS.keys())
-        self.covered_dimensions: list[str] = []
-
-        self.exchange_count: int = 0       # Candidate turns taken
-        self.follow_up_used: bool = False  # Only 1 follow-up per exchange
-        self.dont_know_streak: int = 0
-        self.interview_complete: bool = False
-        self.last_sarah_message: str = ""  # For repeat requests
+        self.exchange_count = exchange_count
+        self.follow_up_used = False
+        self.dont_know_streak = 0
+        self.interview_complete = False
+        
+        self.last_sarah_message = ""
+        for m in reversed(self.messages):
+            if m["role"] == "assistant":
+                self.last_sarah_message = m["content"]
+                break
 
     # ------------------------------------------------------------------
     # PUBLIC: Opening message

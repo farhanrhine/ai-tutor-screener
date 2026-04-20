@@ -13,9 +13,17 @@ async def init_db():
                 candidate_name TEXT NOT NULL,
                 start_time TEXT NOT NULL,
                 end_time TEXT,
-                status TEXT NOT NULL DEFAULT 'in_progress'
+                status TEXT NOT NULL DEFAULT 'in_progress',
+                exchange_count INTEGER DEFAULT 0,
+                uncovered_dimensions TEXT
             )
         """)
+        try:
+            # Handle migrations for existing databases
+            await db.execute("ALTER TABLE sessions ADD COLUMN exchange_count INTEGER DEFAULT 0")
+            await db.execute("ALTER TABLE sessions ADD COLUMN uncovered_dimensions TEXT")
+        except:
+            pass
         await db.execute("""
             CREATE TABLE IF NOT EXISTS messages (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -79,6 +87,17 @@ async def update_session_status(session_id: str, status: str):
         await db.execute(
             "UPDATE sessions SET status = ? WHERE id = ?",
             (status, session_id),
+        )
+        await db.commit()
+
+
+async def update_session_state(session_id: str, exchange_count: int, uncovered_dimensions: list):
+    """Update engine state for stateless connections."""
+    import json
+    async with aiosqlite.connect(DATABASE_URL) as db:
+        await db.execute(
+            "UPDATE sessions SET exchange_count = ?, uncovered_dimensions = ? WHERE id = ?",
+            (exchange_count, json.dumps(uncovered_dimensions), session_id),
         )
         await db.commit()
 

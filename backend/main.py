@@ -14,10 +14,10 @@ from database import (
     save_message,
     get_messages,
     get_assessment,
-    get_all_sessions,
     update_session_status,
+    update_session_state,
 )
-from conversation import create_engine, get_engine, remove_engine
+from conversation import create_engine
 from assessment import generate_assessment
 
 
@@ -91,6 +91,7 @@ async def start_session(req: StartSessionRequest):
 
     opening_message = await engine.get_opening_message()
     await save_message(session_id, "interviewer", opening_message)
+    await update_session_state(session_id, engine.exchange_count, engine.uncovered_dimensions)
 
     return {
         "session_id": session_id,
@@ -112,27 +113,33 @@ async def send_message(req: MessageRequest, background_tasks: BackgroundTasks):
     # Save candidate message
     await save_message(req.session_id, "candidate", req.candidate_message.strip())
 
-    # Get or recreate engine (handles reconnects)
-    engine = get_engine(req.session_id)
-    if not engine:
-        # Rebuild engine state from DB on reconnect
-        engine = create_engine(req.session_id, session["candidate_name"])
-        messages = await get_messages(req.session_id)
-        for msg in messages:
-            role = "assistant" if msg["role"] == "interviewer" else "user"
-            engine.messages.append({"role": role, "content": msg["content"]})
-            if role == "user":
-                engine.exchange_count += 1
-                engine._mark_dimension_progress()
+    # Get or recreate engine (handles reconnects) safely
+    messages_db = await get_messages(req.session_id)
+    messages = []
+    for msg in messages_db:
+        role = "assistant" if msg["role"] == "interviewer" else "user"
+        messages.append({"role": role, "content": msg["content"]})
+        
+    import json
+    raw_dim = session.get("uncovered_dimensions")
+    uncovered_dimensions = json.loads(raw_dim) if raw_dim else None
+
+    engine = create_engine(
+        session_id=req.session_id,
+        candidate_name=session["candidate_name"],
+        exchange_count=session.get("exchange_count", 0) or 0,
+        uncovered_dimensions=uncovered_dimensions,
+        messages=messages
+    )
 
     result = await engine.process_candidate_answer(req.candidate_message.strip(), req.time_remaining)
 
     # Save interviewer response
     await save_message(req.session_id, "interviewer", result["interviewer_response"])
+    await update_session_state(req.session_id, engine.exchange_count, engine.uncovered_dimensions)
 
     # If interview complete, trigger assessment generation in background
     if result["interview_complete"]:
-        remove_engine(req.session_id)
         await update_session_status(req.session_id, "generating")
         background_tasks.add_task(generate_assessment, req.session_id)
 
