@@ -128,13 +128,16 @@ class InterviewEngine:
             return {"interviewer_response": response, "interview_complete": self.interview_complete}
 
         # --- Normal flow ---
-        # Assess quality only if not already following up
+        # Detect frustration or "I already told you" to force a move-on
+        FRUSTRATION_RE = re.compile(r"(already (told|said|explained)|just said)", re.IGNORECASE)
+        is_frustrated = bool(FRUSTRATION_RE.search(answer))
+
         quality = "strong"
-        if not self.follow_up_used:
+        if not self.follow_up_used and not is_frustrated:
             quality = await self._assess_quality(answer)
 
         # Decide: follow-up or next question or wrap-up
-        if quality in ("vague", "short") and not self.follow_up_used:
+        if quality in ("vague", "short") and not self.follow_up_used and not is_frustrated:
             # Use a follow-up — let LLM decide what to dig into
             response = await self._next_move(answer, time_remaining, force_followup=True)
             self.follow_up_used = True
@@ -253,6 +256,6 @@ class InterviewEngine:
             model=CONVERSATION_MODEL,
             messages=messages,
             max_tokens=350,
-            temperature=0.8,  # Slightly higher — more natural, varied responses
+            temperature=0.8,
         )
         return response.choices[0].message.content.strip()
