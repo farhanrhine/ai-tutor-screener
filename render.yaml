@@ -11,4 +11,4 @@ services:
       - key: CONVERSATION_MODEL
         value: openai/gpt-oss-120b
       - key: ASSESSMENT_MODEL
-        value: openai/gpt-oss-120b
+        value: llama-3.3-70b-versatile
