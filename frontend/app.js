@@ -168,9 +168,9 @@ function startRecording() {
 
       // ── UI ──
       isRecording = true;
-      setStatus('listening', '🎙️ Listening…');
+      setStatus('listening', 'Listening…');
       document.getElementById('mic-btn').classList.add('recording');
-      document.getElementById('mic-btn').innerHTML = '⏹️';
+      document.getElementById('mic-btn').innerHTML = '<svg viewBox="0 0 24 24" fill="none" class="icon" style="width:32px;height:32px;"><rect x="6" y="6" width="12" height="12" rx="2" ry="2"/></svg>';
       document.getElementById('mic-label').textContent = 'Click to stop & send';
       document.getElementById('waveform').classList.add('show');
       document.getElementById('ring1').style.display = 'block';
@@ -184,7 +184,7 @@ function startRecording() {
       console.error('Mic access denied:', err);
       // Fallback: Web Speech only (no Whisper)
       if (hasSpeechAPI) _startWebSpeechOnly();
-      else setStatus('idle', '⚠️ Mic access denied — type your answer');
+      else setStatus('idle', 'Mic access denied — type your answer');
     });
 }
 
@@ -197,9 +197,9 @@ function _startWebSpeechOnly() {
 
   recognition.onstart = () => {
     isRecording = true;
-    setStatus('listening', '🎙️ Listening…');
+    setStatus('listening', 'Listening…');
     document.getElementById('mic-btn').classList.add('recording');
-    document.getElementById('mic-btn').innerHTML = '⏹️';
+    document.getElementById('mic-btn').innerHTML = '<svg viewBox="0 0 24 24" fill="none" class="icon" style="width:32px;height:32px;"><rect x="6" y="6" width="12" height="12" rx="2" ry="2"/></svg>';
     document.getElementById('mic-label').textContent = 'Click to stop & send';
     document.getElementById('waveform').classList.add('show');
     document.getElementById('ring1').style.display = 'block';
@@ -262,9 +262,9 @@ async function _transcribeAndSend(blob) {
     return;
   }
 
-  setStatus('processing', '🔄 Transcribing…');
+  setStatus('processing', 'Transcribing…');
   const textInput = document.getElementById('text-input');
-  if (textInput) textInput.value = '⏳ Transcribing your answer…';
+  if (textInput) textInput.value = 'Transcribing your answer…';
   setProcessing(true);
 
   try {
@@ -297,14 +297,14 @@ async function _transcribeAndSend(blob) {
       console.log('Falling back to Web Speech transcript');
       sendAnswer(fallback);
     } else {
-      setStatus('idle', '⚠️ Could not transcribe — please type your answer');
+      setStatus('idle', 'Could not transcribe — please type your answer');
     }
   }
 }
 
 function stopRecordingUI() {
   document.getElementById('mic-btn').classList.remove('recording');
-  document.getElementById('mic-btn').innerHTML = '🎙️';
+  document.getElementById('mic-btn').innerHTML = '<svg viewBox="0 0 24 24" fill="none" class="icon"><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/><path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5M12 19v3M8 22h8"/></svg>';
   document.getElementById('mic-label').textContent = 'Click to speak';
   document.getElementById('waveform').classList.remove('show');
   document.getElementById('ring1').style.display = 'none';
@@ -390,7 +390,7 @@ function addMessage(text, role) {
 
   const avatar = document.createElement('div');
   avatar.className = `msg-avatar ${role === 'aria' ? 'aria-av' : 'cand-av'}`;
-  avatar.textContent = role === 'aria' ? 'S' : '👤';
+  avatar.textContent = role === 'aria' ? 'S' : 'C';
 
   const bubble = document.createElement('div');
   bubble.className = `message-bubble ${role === 'aria' ? 'aria-msg' : 'cand-msg'}`;
@@ -416,7 +416,7 @@ async function showAriaMessage(text, enableMicAfter) {
   if (!text || !text.trim()) return;
   // Show typing indicator wrap
   document.getElementById('typing-wrap').classList.add('show');
-  setStatus('processing', '⏳ Thinking…');
+  setStatus('processing', 'Thinking…');
   await delay(400);
   document.getElementById('chat-messages').scrollTop = 999999;
 
@@ -448,7 +448,7 @@ async function showAriaMessage(text, enableMicAfter) {
   chat.insertBefore(wrap, typingWrap);
 
   // Typewriter
-  setStatus('speaking', '🔊 Speaking…');
+  setStatus('speaking', 'Speaking…');
   speakText(text);
   await typewriter(msgDiv, text);
   chat.scrollTop = chat.scrollHeight;
@@ -465,8 +465,8 @@ async function showAriaMessage(text, enableMicAfter) {
 function addErrorMessage(text) {
   const chat = document.getElementById('chat-messages');
   const div = document.createElement('div');
-  div.style.cssText = 'text-align:center; font-size:0.82rem; color:var(--accent-red); padding:8px; animation:fadeIn 0.3s ease';
-  div.textContent = `⚠️ ${text}`;
+  div.style.cssText = 'text-align:center; font-size:0.82rem; color:var(--danger); padding:8px; animation:fadeIn 0.3s ease';
+  div.textContent = `${text}`;
   chat.appendChild(div);
   chat.scrollTop = chat.scrollHeight;
 }
@@ -528,7 +528,7 @@ function setProcessing(val) {
   const textInput = document.getElementById('text-input');
   micBtn.disabled = val;
   if (textInput) textInput.disabled = val;
-  if (val) setStatus('processing', '⏳ Processing…');
+  if (val) setStatus('processing', 'Processing…');
 }
 
 function updateProgress(current) {
@@ -602,7 +602,7 @@ function autoEndInterview() {
     stopRecordingUI();
   }
   
-  setStatus('idle', '⌛ Time is up!');
+  setStatus('idle', 'Time is up!');
   
   // If we are currently processing a message, wait for it to finish then send end signal
   if (isProcessing) {
