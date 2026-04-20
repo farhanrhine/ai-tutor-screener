@@ -9,6 +9,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css" />
+  <script src="js/theme.js"></script>
   <style>
     .page { position: relative; z-index: 1; min-height: 100vh; }
 
@@ -133,10 +134,15 @@
         <div class="nav-sub">AI Tutor Screener</div>
       </div>
     </div>
-    <a href="index.html" class="btn btn-primary" style="padding:10px 20px">
-      <svg viewBox="0 0 24 24" fill="none" class="icon" style="width:16px;height:16px;margin-right:-4px;"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-      New Interview
-    </a>
+    <div style="display:flex; align-items:center; gap:16px;">
+      <a href="index.html" class="btn btn-primary" style="padding:10px 20px">
+        <svg viewBox="0 0 24 24" fill="none" class="icon" style="width:16px;height:16px;margin-right:-4px;"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        New Interview
+      </a>
+      <button class="theme-toggle-btn" onclick="toggleTheme()" title="Toggle Theme">
+        <svg viewBox="0 0 24 24" fill="none" class="icon theme-toggle-icon"></svg>
+      </button>
+    </div>
   </nav>
 
   <main>

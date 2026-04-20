@@ -9,6 +9,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css" />
+  <script src="js/theme.js"></script>
   <style>
     /* ---- Page Layout ---- */
     .page { position: relative; z-index: 1; min-height: 100vh; }
@@ -342,7 +343,12 @@
         <div class="progress-bar-fill" id="progress-bar" style="width:16%"></div>
       </div>
     </div>
-    <div class="nav-timer" id="nav-timer" style="display:none">00:00</div>
+    <div style="display:flex; align-items:center; gap:16px;">
+      <div class="nav-timer" id="nav-timer" style="display:none">00:00</div>
+      <button class="theme-toggle-btn" onclick="toggleTheme()" title="Toggle Theme">
+        <svg viewBox="0 0 24 24" fill="none" class="icon theme-toggle-icon"></svg>
+      </button>
+    </div>
   </nav>
 
   <!-- ==================== WELCOME SCREEN ==================== -->
