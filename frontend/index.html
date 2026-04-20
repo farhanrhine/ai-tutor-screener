@@ -487,10 +487,8 @@
           <span class="mic-label" id="mic-label">Click to speak</span>
         </div>
 
-        <!-- Text preview / fallback -->
         <div class="text-fallback show" id="text-fallback">
-          <input class="input" type="text" id="text-input" placeholder="Your answer will appear here..."
-            onkeydown="if(event.key==='Enter') sendTextAnswer()" />
+          <input class="input" type="text" id="text-input" placeholder="Your answer will appear here..." />
           <button class="btn btn-primary" onclick="sendTextAnswer()">Send</button>
         </div>
 
@@ -523,6 +521,6 @@
 
 </div><!-- .page -->
 
-<script src="app.js"></script>
+<script type="module" src="js/main.js"></script>
 </body>
 </html>
