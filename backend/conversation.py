@@ -1,19 +1,19 @@
-import random
+import re
 from groq import AsyncGroq
 from config import GROQ_API_KEY, CONVERSATION_MODEL
 from prompts import (
     SYSTEM_PROMPT,
-    INTERVIEW_QUESTIONS,
+    ASSESSMENT_DIMENSIONS,
     OPENING_PROMPT,
-    ASSESS_QUALITY_PROMPT,
-    FOLLOWUP_GENERATION_PROMPT,
-    NEXT_QUESTION_PROMPT,
+    NEXT_MOVE_PROMPT,
+    REPEAT_PROMPT,
+    DONT_KNOW_PROMPT,
     WRAP_UP_PROMPT,
+    ASSESS_QUALITY_PROMPT,
 )
 
 client = AsyncGroq(api_key=GROQ_API_KEY)
 
-# In-memory store of active engines (keyed by session_id)
 _engines: dict[str, "InterviewEngine"] = {}
 
 
@@ -31,124 +31,225 @@ def remove_engine(session_id: str):
     _engines.pop(session_id, None)
 
 
+# ---------------------------------------------------------------
+# Detection helpers
+# ---------------------------------------------------------------
+
+REPEAT_RE = re.compile(
+    r"\b(repeat|again|pardon|say that again|what (was|were|did) you (ask|say)|"
+    r"didn'?t (hear|catch|understand)|can you say|come again|huh|sorry\??)\b",
+    re.IGNORECASE,
+)
+
+DONT_KNOW_RE = re.compile(
+    r"^(i don'?t know|idk|no idea|not sure|i'?m not sure|"
+    r"i have no idea|nothing|i can'?t|i cannot|i give up)[\.\!\?]*$",
+    re.IGNORECASE,
+)
+
+EARLY_END_MARKER = "[Candidate chose to end interview early]"
+
+MAX_EXCHANGES = 6   # Total candidate turns before wrap-up
+
+
 class InterviewEngine:
-    """Manages the adaptive interview conversation flow."""
+    """
+    Dynamic interview engine.
+    - No fixed question list — LLM decides what to ask based on conversation + uncovered dimensions.
+    - Tracks which assessment dimensions have been adequately covered.
+    - Wraps up after MAX_EXCHANGES turns or when dimensions are covered.
+    """
 
     def __init__(self, session_id: str, candidate_name: str):
         self.session_id = session_id
         self.candidate_name = candidate_name
-        self.messages: list[dict] = []          # Full conversation history for LLM context
-        self.questions_asked: list[int] = []    # Indices of questions already asked
-        self.questions_asked_count: int = 0
-        self.just_followed_up: bool = False     # Prevent double follow-ups
+
+        # Full conversation history — every message sent to the LLM
+        self.messages: list[dict] = []
+
+        # Dimension tracking: starts uncovered, marked covered when LLM addresses them
+        self.uncovered_dimensions: list[str] = list(ASSESSMENT_DIMENSIONS.keys())
+        self.covered_dimensions: list[str] = []
+
+        self.exchange_count: int = 0       # Candidate turns taken
+        self.follow_up_used: bool = False  # Only 1 follow-up per exchange
+        self.dont_know_streak: int = 0
         self.interview_complete: bool = False
-        self.last_question: str = ""            # Track last question for context
+        self.last_sarah_message: str = ""  # For repeat requests
+
+    # ------------------------------------------------------------------
+    # PUBLIC: Opening message
+    # ------------------------------------------------------------------
 
     async def get_opening_message(self) -> str:
-        """Generate warm opening + first question."""
-        first_q = INTERVIEW_QUESTIONS[0]
-        self.questions_asked.append(0)
-        self.questions_asked_count += 1
-        self.last_question = first_q
-
-        prompt = OPENING_PROMPT.format(
-            candidate_name=self.candidate_name,
-            first_question=first_q,
-        )
-        response = await self._call_llm(prompt, use_system=False)
+        prompt = OPENING_PROMPT.format(candidate_name=self.candidate_name)
+        response = await self._call_simple(prompt)
+        self.last_sarah_message = response
         self.messages.append({"role": "assistant", "content": response})
         return response
 
+    # ------------------------------------------------------------------
+    # PUBLIC: Process candidate answer → return Sarah's next response
+    # ------------------------------------------------------------------
+
     async def process_candidate_answer(self, answer: str) -> dict:
-        """Process candidate's answer and return next interviewer response."""
+
+        # --- Handle early-end ---
+        if EARLY_END_MARKER in answer:
+            if not self.interview_complete:
+                self.interview_complete = True
+                response = await self._wrap_up()
+                self.messages.append({"role": "assistant", "content": response})
+            else:
+                response = self.last_sarah_message
+            return {"interviewer_response": response, "interview_complete": True}
+
         self.messages.append({"role": "user", "content": answer})
 
-        # Edge case: very long tangent (> 200 words) — just move on
-        word_count = len(answer.split())
+        # --- Repeat request ---
+        if self._is_repeat(answer):
+            response = await self._repeat()
+            self.messages.append({"role": "assistant", "content": response})
+            return {"interviewer_response": response, "interview_complete": False}
 
-        quality = await self._assess_answer_quality(answer)
-
-        if quality in ("vague", "short") and not self.just_followed_up:
-            response = await self._generate_followup(answer, quality)
-            self.just_followed_up = True
-        elif self.questions_asked_count >= 6:
-            response = await self._wrap_up()
-            self.interview_complete = True
+        # --- "I don't know" streak ---
+        if DONT_KNOW_RE.match(answer.strip()):
+            self.dont_know_streak += 1
         else:
-            if word_count > 200:
-                # Long tangent: acknowledge briefly and move on
-                response = await self._ask_next_question(
-                    "Thank you for sharing that in detail."
-                )
+            self.dont_know_streak = 0
+
+        if self.dont_know_streak >= 2:
+            self.dont_know_streak = 0
+            self.follow_up_used = False
+            self.exchange_count += 1
+            self._mark_dimension_progress()
+            response = await self._graceful_move_on()
+            self.messages.append({"role": "assistant", "content": response})
+            return {"interviewer_response": response, "interview_complete": self.interview_complete}
+
+        # --- Normal flow ---
+        # Assess quality only if not already following up
+        quality = "strong"
+        if not self.follow_up_used:
+            quality = await self._assess_quality(answer)
+
+        # Decide: follow-up or next question or wrap-up
+        if quality in ("vague", "short") and not self.follow_up_used:
+            # Use a follow-up — let LLM decide what to dig into
+            response = await self._next_move(answer, force_followup=True)
+            self.follow_up_used = True
+
+        else:
+            # Move to next exchange
+            self.exchange_count += 1
+            self.follow_up_used = False
+            self._mark_dimension_progress()
+
+            if self.exchange_count >= MAX_EXCHANGES or not self.uncovered_dimensions:
+                self.interview_complete = True
+                response = await self._wrap_up()
             else:
-                response = await self._ask_next_question(answer)
-            self.just_followed_up = False
+                response = await self._next_move(answer, force_followup=False)
 
+        self.last_sarah_message = response
         self.messages.append({"role": "assistant", "content": response})
-        return {
-            "interviewer_response": response,
-            "interview_complete": self.interview_complete,
-        }
+        return {"interviewer_response": response, "interview_complete": self.interview_complete}
 
-    async def _assess_answer_quality(self, answer: str) -> str:
-        """Classify answer as strong, vague, or short."""
-        # Quick check: under 15 words = automatically short
-        if len(answer.split()) < 15:
-            return "short"
+    # ------------------------------------------------------------------
+    # PRIVATE helpers
+    # ------------------------------------------------------------------
 
-        prompt = ASSESS_QUALITY_PROMPT.format(
-            question=self.last_question,
-            answer=answer,
-        )
-        result = await self._call_llm(prompt, use_system=False)
-        result = result.strip().lower()
-        if result in ("strong", "vague", "short"):
-            return result
-        # Fallback: if LLM gives unexpected output, treat as strong to keep flow moving
-        return "strong"
+    def _mark_dimension_progress(self):
+        """Heuristically mark dimensions as covered as conversation progresses."""
+        # Each exchange roughly covers one dimension in order
+        idx = min(self.exchange_count - 1, len(self.uncovered_dimensions) - 1)
+        if idx >= 0 and self.uncovered_dimensions:
+            dim = self.uncovered_dimensions[0]
+            self.uncovered_dimensions.remove(dim)
+            self.covered_dimensions.append(dim)
 
-    async def _generate_followup(self, answer: str, quality: str) -> str:
-        """Generate natural follow-up for vague/short answers."""
-        prompt = FOLLOWUP_GENERATION_PROMPT.format(answer=answer, quality=quality)
-        return await self._call_llm(prompt, use_system=False)
+    def _is_repeat(self, answer: str) -> bool:
+        stripped = answer.strip().lower()
+        words = stripped.split()
+        # Short confused answer (≤7 words) with a repeat signal
+        if len(words) <= 7 and REPEAT_RE.search(stripped):
+            return True
+        # Explicit repeat request in any length answer
+        if re.search(r"\b(repeat|say that again|come again)\b", stripped, re.IGNORECASE):
+            return True
+        return False
 
-    async def _ask_next_question(self, answer: str) -> str:
-        """Pick next question and generate a natural transition."""
-        # Find next unused question
-        available = [
-            i for i in range(len(INTERVIEW_QUESTIONS))
-            if i not in self.questions_asked
-        ]
-        if not available:
-            # All questions used — wrap up
+    async def _repeat(self) -> str:
+        prompt = REPEAT_PROMPT.format(last_question=self.last_sarah_message)
+        return await self._call_simple(prompt)
+
+    async def _graceful_move_on(self) -> str:
+        if self.exchange_count >= MAX_EXCHANGES or not self.uncovered_dimensions:
+            self.interview_complete = True
             return await self._wrap_up()
+        next_dim = self.uncovered_dimensions[0] if self.uncovered_dimensions else "teaching approach"
+        next_hint = ASSESSMENT_DIMENSIONS.get(next_dim, "their teaching approach")
+        prompt = DONT_KNOW_PROMPT.format(next_dimension_hint=next_hint)
+        return await self._call_with_history(prompt)
 
-        next_idx = available[0]
-        self.questions_asked.append(next_idx)
-        self.questions_asked_count += 1
-        next_q = INTERVIEW_QUESTIONS[next_idx]
-        self.last_question = next_q
+    async def _next_move(self, last_answer: str, force_followup: bool) -> str:
+        """Let the LLM decide what to say next, given full conversation context."""
+        # Format uncovered dimensions for the prompt
+        dim_lines = "\n".join(
+            f"- {dim}: {ASSESSMENT_DIMENSIONS[dim]}"
+            for dim in self.uncovered_dimensions
+        ) or "All dimensions covered — start wrapping up."
 
-        prompt = NEXT_QUESTION_PROMPT.format(answer=answer, next_question=next_q)
-        return await self._call_llm(prompt, use_system=False)
+        prompt = NEXT_MOVE_PROMPT.format(
+            candidate_name=self.candidate_name,
+            exchange_count=self.exchange_count,
+            uncovered_dimensions=dim_lines,
+            last_answer=last_answer,
+        )
+
+        # If forcing follow-up, add instruction
+        if force_followup:
+            prompt += "\n\nNOTE: Their answer was vague. Use Option A (follow-up). Be specific about what they said."
+
+        return await self._call_with_history(prompt)
 
     async def _wrap_up(self) -> str:
-        """Generate warm closing message."""
         prompt = WRAP_UP_PROMPT.format(candidate_name=self.candidate_name)
-        return await self._call_llm(prompt, use_system=False)
+        return await self._call_simple(prompt)
 
-    async def _call_llm(self, prompt: str, use_system: bool = True) -> str:
-        """Call Groq API."""
-        messages = []
-        if use_system:
-            messages.append({"role": "system", "content": SYSTEM_PROMPT})
-            messages.extend(self.messages)
-        messages.append({"role": "user", "content": prompt})
+    async def _assess_quality(self, answer: str) -> str:
+        """Quick quality check — strong / vague / short."""
+        if len(answer.split()) < 12:
+            return "short"
+        prompt = ASSESS_QUALITY_PROMPT.format(
+            question=self.last_sarah_message,
+            answer=answer,
+        )
+        result = (await self._call_simple(prompt)).strip().lower()
+        return result if result in ("strong", "vague", "short") else "strong"
 
+    # ------------------------------------------------------------------
+    # LLM callers
+    # ------------------------------------------------------------------
+
+    async def _call_with_history(self, prompt: str) -> str:
+        """Call LLM with full conversation history as context."""
+        messages = [
+            {"role": "system", "content": SYSTEM_PROMPT},
+            *self.messages,
+            {"role": "user", "content": prompt},
+        ]
+        return await self._groq(messages)
+
+    async def _call_simple(self, prompt: str) -> str:
+        """Call LLM with just the prompt — no conversation history needed."""
+        return await self._groq([{"role": "user", "content": prompt}])
+
+    async def _groq(self, messages: list[dict]) -> str:
         response = await client.chat.completions.create(
             model=CONVERSATION_MODEL,
             messages=messages,
-            max_tokens=300,
-            temperature=0.7,
+            max_tokens=350,
+            temperature=0.8,  # Slightly higher — more natural, varied responses
         )
         return response.choices[0].message.content.strip()

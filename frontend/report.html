@@ -50,7 +50,7 @@
     }
     .report-date { font-size: 0.82rem; color: var(--text-muted); margin-bottom: 8px; }
     .report-title { font-size: 0.9rem; color: var(--text-secondary); margin-top: 6px; }
-    .report-name { font-size: 2rem; font-weight: 800; }
+    .report-name { font-size: 2rem; font-weight: 800; text-transform: capitalize; }
 
     /* RECOMMENDATION BANNER */
     .rec-banner {
@@ -95,6 +95,10 @@
     /* DIMENSIONS */
     .dimensions-grid {
       display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px;
+    }
+    /* Last card spans full width if it's alone on its row (odd number of cards) */
+    .dimensions-grid .dim-card:last-child:nth-child(odd) {
+      grid-column: 1 / -1;
     }
     .dim-card { padding: 22px 24px; }
     .dim-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
@@ -153,10 +157,94 @@
     .actions-row { display: flex; gap: 12px; flex-wrap: wrap; }
 
     @media print {
-      .nav, .actions-row, .transcript-header { display: none !important; }
-      body { background: white; color: black; }
-      .glass-card { border: 1px solid #e5e7eb; background: white; }
-      .gradient-text { color: #7c3aed; -webkit-text-fill-color: #7c3aed; }
+      /* --- Page setup --- */
+      @page {
+        margin: 18mm 15mm;
+        size: A4;
+      }
+
+      /* --- Hide UI chrome --- */
+      .nav,
+      .actions-row,
+      .transcript-header { display: none !important; }
+
+      /* --- Reset backgrounds for print (ink saving + legibility) --- */
+      body, .page {
+        background: white !important;
+        color: #111 !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+
+      /* --- Cards: white bg, light border, NO cut in middle --- */
+      .glass-card, .rec-banner, .dim-card {
+        background: #fff !important;
+        border: 1px solid #e2e8f0 !important;
+        box-shadow: none !important;
+        backdrop-filter: none !important;
+        break-inside: avoid !important;
+        page-break-inside: avoid !important;
+      }
+
+      /* --- Gradient text falls back to solid purple --- */
+      .gradient-text {
+        background: none !important;
+        -webkit-background-clip: unset !important;
+        -webkit-text-fill-color: #7c3aed !important;
+        color: #7c3aed !important;
+      }
+
+      /* --- Muted text readable on white --- */
+      .report-date, .score-label, .status-label,
+      .dim-justification, .t-content, .summary-card p {
+        color: #555 !important;
+      }
+      .dim-quote {
+        color: #444 !important;
+        border-left-color: #7c3aed !important;
+        background: #f5f3ff !important;
+      }
+      .t-role.aria { color: #7c3aed !important; }
+      .t-role.cand { color: #64748b !important; }
+
+      /* --- Recommendation banner colours on print --- */
+      .rec-banner.pass  { background: #f0fdf4 !important; border-color: #86efac !important; color: #166534 !important; }
+      .rec-banner.fail  { background: #fef2f2 !important; border-color: #fca5a5 !important; color: #991b1b !important; }
+      .rec-banner.maybe { background: #fffbeb !important; border-color: #fcd34d !important; color: #92400e !important; }
+
+      /* --- Score badge colours on print --- */
+      .score-high { background: #f0fdf4 !important; color: #166534 !important; }
+      .score-mid  { background: #fffbeb !important; color: #92400e !important; }
+      .score-low  { background: #fef2f2 !important; color: #991b1b !important; }
+
+      /* --- Score bar colours on print --- */
+      .bar-high { background: #22c55e !important; }
+      .bar-mid  { background: #f59e0b !important; }
+      .bar-low  { background: #ef4444 !important; }
+      .dim-bar-wrap { background: #e5e7eb !important; }
+
+      /* --- Layout: single-column on print feels cleaner --- */
+      main { max-width: 100% !important; padding: 0 !important; }
+      .score-summary-row { grid-template-columns: 140px 1fr !important; }
+
+      /* --- Prevent orphaned header/rec banner --- */
+      .report-header, .rec-banner { break-after: avoid; page-break-after: avoid; }
+
+      /* --- Transcript: always visible in print, no max-height --- */
+      .transcript-card { break-inside: auto; page-break-inside: auto; }
+      .transcript-body {
+        max-height: none !important;
+        overflow: visible !important;
+        display: block !important;
+      }
+      .transcript-header { display: flex !important; cursor: default; }
+      #transcript-toggle-icon { display: none !important; }
+
+      /* --- Keep each transcript message together --- */
+      .t-msg { break-inside: avoid; page-break-inside: avoid; }
+
+      /* --- Dimensions grid stays 2-col --- */
+      .dimensions-grid { grid-template-columns: 1fr 1fr !important; }
     }
 
     @media (max-width: 640px) {
@@ -384,7 +472,7 @@ async function renderReport(report, sessionId) {
       const div = document.createElement('div');
       div.className = 't-msg';
       div.innerHTML = `
-        <div class="t-role ${isAria ? 'aria' : 'cand'}">${isAria ? 'Aria' : 'Candidate'}</div>
+        <div class="t-role ${isAria ? 'aria' : 'cand'}">${isAria ? 'Sarah' : 'Candidate'}</div>
         <div class="t-content">${escapeHtml(msg.content)}</div>
       `;
       msgs.appendChild(div);

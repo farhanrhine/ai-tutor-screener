@@ -15,6 +15,9 @@ const MAX_QUESTIONS = 6;
 let timerInterval = null;
 let timerSeconds = 0;
 let silenceTimer = null;
+let accumulatedTranscript = '';     // Builds up full answer across speech pauses
+const MIC_MAX_SECONDS = 60;          // Auto-stop mic after 60 seconds
+const INTERVIEW_TOTAL_SECONDS = 420; // 7 minutes total interview
 
 // --- Web Speech API ---
 const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -99,6 +102,10 @@ async function startInterview() {
 // MIC TOGGLE
 // ============================================================
 
+// MediaRecorder state (for Whisper)
+let mediaRecorder = null;
+let audioChunks = [];
+
 function toggleMic() {
   if (isProcessing || isSpeaking) return;
   if (isRecording) {
@@ -109,11 +116,83 @@ function toggleMic() {
 }
 
 function startRecording() {
-  if (!hasSpeechAPI) return;
+  accumulatedTranscript = '';
 
+  // --- Request microphone access ---
+  navigator.mediaDevices.getUserMedia({ audio: true, video: false })
+    .then(stream => {
+      // ── Track 1: MediaRecorder → sends audio to Whisper for accurate STT ──
+      const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
+        ? 'audio/webm;codecs=opus'
+        : MediaRecorder.isTypeSupported('audio/webm')
+          ? 'audio/webm'
+          : 'audio/ogg;codecs=opus';
+
+      audioChunks = [];
+      mediaRecorder = new MediaRecorder(stream, { mimeType });
+      mediaRecorder.ondataavailable = e => {
+        if (e.data && e.data.size > 0) audioChunks.push(e.data);
+      };
+      mediaRecorder.start(250); // Collect chunks every 250ms
+
+      // ── Track 2: Web Speech API → live preview text in input box ──
+      if (hasSpeechAPI) {
+        recognition = new SpeechRecognition();
+        recognition.continuous = true;
+        recognition.interimResults = true;
+        recognition.lang = 'en-US';
+
+        recognition.onresult = (event) => {
+          let finalText = '';
+          for (let i = 0; i < event.results.length; i++) {
+            if (event.results[i].isFinal) finalText += event.results[i][0].transcript + ' ';
+          }
+          if (finalText.trim()) accumulatedTranscript = finalText.trim();
+
+          let interimText = '';
+          for (let i = event.resultIndex; i < event.results.length; i++) {
+            if (!event.results[i].isFinal) interimText += event.results[i][0].transcript;
+          }
+          const textInput = document.getElementById('text-input');
+          if (textInput) textInput.value = (accumulatedTranscript + ' ' + interimText).trim();
+        };
+
+        recognition.onerror = (e) => {
+          if (e.error !== 'no-speech') console.warn('Web Speech preview error:', e.error);
+        };
+        recognition.onend = () => {
+          if (isRecording) { try { recognition.start(); } catch(e) {} }
+        };
+        recognition.start();
+      }
+
+      // ── UI ──
+      isRecording = true;
+      setStatus('listening', '🎙️ Listening…');
+      document.getElementById('mic-btn').classList.add('recording');
+      document.getElementById('mic-btn').innerHTML = '⏹️';
+      document.getElementById('mic-label').textContent = 'Click to stop & send';
+      document.getElementById('waveform').classList.add('show');
+      document.getElementById('ring1').style.display = 'block';
+      document.getElementById('ring2').style.display = 'block';
+      document.getElementById('send-early-btn').style.display = 'inline-flex';
+
+      // Auto-stop after 60s
+      silenceTimer = setTimeout(() => { if (isRecording) stopRecording(); }, MIC_MAX_SECONDS * 1000);
+    })
+    .catch(err => {
+      console.error('Mic access denied:', err);
+      // Fallback: Web Speech only (no Whisper)
+      if (hasSpeechAPI) _startWebSpeechOnly();
+      else setStatus('idle', '⚠️ Mic access denied — type your answer');
+    });
+}
+
+function _startWebSpeechOnly() {
+  // Fallback path — no MediaRecorder available
   recognition = new SpeechRecognition();
-  recognition.continuous = false;
-  recognition.interimResults = false;
+  recognition.continuous = true;
+  recognition.interimResults = true;
   recognition.lang = 'en-US';
 
   recognition.onstart = () => {
@@ -121,62 +200,116 @@ function startRecording() {
     setStatus('listening', '🎙️ Listening…');
     document.getElementById('mic-btn').classList.add('recording');
     document.getElementById('mic-btn').innerHTML = '⏹️';
-    document.getElementById('mic-label').textContent = 'Click to stop';
+    document.getElementById('mic-label').textContent = 'Click to stop & send';
     document.getElementById('waveform').classList.add('show');
     document.getElementById('ring1').style.display = 'block';
     document.getElementById('ring2').style.display = 'block';
-
-    // Silence timeout — 12 seconds
-    silenceTimer = setTimeout(() => {
-      if (isRecording) {
-        setStatus('idle', 'Ready');
-        document.getElementById('mic-label').textContent = 'Click mic when ready';
-        recognition.stop();
-      }
-    }, 12000);
+    document.getElementById('send-early-btn').style.display = 'inline-flex';
+    silenceTimer = setTimeout(() => { if (isRecording) stopRecording(); }, MIC_MAX_SECONDS * 1000);
   };
-
   recognition.onresult = (event) => {
-    clearTimeout(silenceTimer);
-    const transcript = event.results[0][0].transcript.trim();
-    if (transcript) {
-      stopRecordingUI();
-      sendAnswer(transcript);
+    let finalText = '';
+    for (let i = 0; i < event.results.length; i++) {
+      if (event.results[i].isFinal) finalText += event.results[i][0].transcript + ' ';
     }
-  };
-
-  recognition.onerror = (event) => {
-    clearTimeout(silenceTimer);
-    stopRecordingUI();
-    if (event.error !== 'no-speech') {
-      console.error('Speech error:', event.error);
-      // Show text fallback on persistent error
-      document.getElementById('text-fallback').classList.add('show');
+    if (finalText.trim()) accumulatedTranscript = finalText.trim();
+    let interimText = '';
+    for (let i = event.resultIndex; i < event.results.length; i++) {
+      if (!event.results[i].isFinal) interimText += event.results[i][0].transcript;
     }
-    setStatus('idle', 'Ready');
+    const textInput = document.getElementById('text-input');
+    if (textInput) textInput.value = (accumulatedTranscript + ' ' + interimText).trim();
   };
-
-  recognition.onend = () => {
-    clearTimeout(silenceTimer);
-    stopRecordingUI();
-  };
-
+  recognition.onerror = e => { if (e.error !== 'no-speech') console.error(e); };
+  recognition.onend = () => { if (isRecording) { try { recognition.start(); } catch(e) {} } };
   recognition.start();
 }
 
 function stopRecording() {
-  if (recognition) recognition.stop();
-  stopRecordingUI();
+  clearTimeout(silenceTimer);
+  isRecording = false;  // Must set BEFORE stopping so onend doesn't restart
+
+  // Stop Web Speech preview
+  if (recognition) { try { recognition.stop(); } catch(e) {} recognition = null; }
+
+  if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+    // ── Whisper path: collect audio blob → POST → transcribe ──
+    mediaRecorder.onstop = async () => {
+      const blob = new Blob(audioChunks, { type: mediaRecorder.mimeType || 'audio/webm' });
+      audioChunks = [];
+      // Release mic
+      try { mediaRecorder.stream.getTracks().forEach(t => t.stop()); } catch(e) {}
+      mediaRecorder = null;
+
+      stopRecordingUI();
+      await _transcribeAndSend(blob);
+    };
+    mediaRecorder.stop();
+  } else {
+    // ── Fallback: use Web Speech accumulated text ──
+    mediaRecorder = null;
+    stopRecordingUI();
+    const fallback = accumulatedTranscript.trim();
+    accumulatedTranscript = '';
+    if (fallback) sendAnswer(fallback);
+  }
+}
+
+async function _transcribeAndSend(blob) {
+  if (!blob || blob.size < 1000) {
+    // Too short — probably silence or mic error
+    setStatus('idle', 'Ready — your turn');
+    return;
+  }
+
+  setStatus('processing', '🔄 Transcribing…');
+  const textInput = document.getElementById('text-input');
+  if (textInput) textInput.value = '⏳ Transcribing your answer…';
+  setProcessing(true);
+
+  try {
+    const ext = blob.type.includes('ogg') ? 'ogg' : 'webm';
+    const formData = new FormData();
+    formData.append('file', blob, `answer.${ext}`);
+
+    const res = await fetch(API('/transcribe'), { method: 'POST', body: formData });
+    if (!res.ok) throw new Error(`Transcribe HTTP ${res.status}`);
+
+    const data = await res.json();
+    const text = (data.text || '').trim();
+
+    if (text) {
+      if (textInput) textInput.value = text;
+      setProcessing(false);
+      sendAnswer(text);
+    } else {
+      throw new Error('Empty transcript from Whisper');
+    }
+  } catch (err) {
+    console.error('Whisper transcription failed:', err);
+    // Fallback: use Web Speech accumulated text
+    const fallback = accumulatedTranscript.trim();
+    accumulatedTranscript = '';
+    if (textInput) textInput.value = '';
+    setProcessing(false);
+
+    if (fallback) {
+      console.log('Falling back to Web Speech transcript');
+      sendAnswer(fallback);
+    } else {
+      setStatus('idle', '⚠️ Could not transcribe — please type your answer');
+    }
+  }
 }
 
 function stopRecordingUI() {
-  isRecording = false;
   document.getElementById('mic-btn').classList.remove('recording');
   document.getElementById('mic-btn').innerHTML = '🎙️';
   document.getElementById('mic-label').textContent = 'Click to speak';
   document.getElementById('waveform').classList.remove('show');
   document.getElementById('ring1').style.display = 'none';
   document.getElementById('ring2').style.display = 'none';
+  document.getElementById('send-early-btn').style.display = 'none';
 }
 
 // ============================================================
@@ -187,6 +320,17 @@ function sendTextAnswer() {
   const input = document.getElementById('text-input');
   const text = input.value.trim();
   if (!text || isProcessing) return;
+
+  // --- KEY FIX: Stop mic FIRST, clear accumulated transcript ---
+  // Without this, stopRecording() fires later and re-sends the old transcript
+  if (isRecording) {
+    clearTimeout(silenceTimer);
+    isRecording = false;           // Must set false before recognition.stop() so onend doesn't restart
+    if (recognition) recognition.stop();
+    stopRecordingUI();
+  }
+  accumulatedTranscript = '';      // Discard any partial speech — user typed instead
+
   input.value = '';
   sendAnswer(text);
 }
@@ -240,7 +384,7 @@ function addMessage(text, role) {
 
   const avatar = document.createElement('div');
   avatar.className = `msg-avatar ${role === 'aria' ? 'aria-av' : 'cand-av'}`;
-  avatar.textContent = role === 'aria' ? 'A' : '👤';
+  avatar.textContent = role === 'aria' ? 'S' : '👤';
 
   const bubble = document.createElement('div');
   bubble.className = `message-bubble ${role === 'aria' ? 'aria-msg' : 'cand-msg'}`;
@@ -280,7 +424,7 @@ async function showAriaMessage(text, enableMicAfter) {
 
   const avatar = document.createElement('div');
   avatar.className = 'msg-avatar aria-av';
-  avatar.textContent = 'A';
+  avatar.textContent = 'S';
 
   const bubble = document.createElement('div');
   bubble.className = 'message-bubble aria-msg';
@@ -382,18 +526,55 @@ function setProcessing(val) {
 
 function updateProgress(current) {
   const safeQ = Math.min(current, MAX_QUESTIONS);
+  const answered = Math.max(0, safeQ - 1); // questions fully answered
   document.getElementById('progress-label').textContent = `Question ${safeQ} of ${MAX_QUESTIONS}`;
   const pct = Math.min((safeQ / MAX_QUESTIONS) * 100, 100);
   document.getElementById('progress-bar').style.width = `${pct}%`;
+
+  // Control panel ring + number
+  const qNum = document.getElementById('ctrl-q-num');
+  const progBar = document.getElementById('ctrl-prog-bar');
+  const ringFill = document.getElementById('ctrl-ring-fill');
+  if (qNum) qNum.textContent = answered;
+  if (progBar) progBar.style.width = `${(answered / MAX_QUESTIONS) * 100}%`;
+  if (ringFill) {
+    const circumference = 220; // stroke-dasharray
+    const offset = circumference * (1 - answered / MAX_QUESTIONS);
+    ringFill.style.strokeDashoffset = offset;
+  }
 }
 
 function startTimer() {
   timerSeconds = 0;
   timerInterval = setInterval(() => {
     timerSeconds++;
-    const m = String(Math.floor(timerSeconds / 60)).padStart(2, '0');
-    const s = String(timerSeconds % 60).padStart(2, '0');
-    document.getElementById('nav-timer').textContent = `${m}:${s}`;
+
+    // --- Elapsed time ---
+    const em = String(Math.floor(timerSeconds / 60)).padStart(2, '0');
+    const es = String(timerSeconds % 60).padStart(2, '0');
+    const elapsed = `${em}:${es}`;
+    document.getElementById('nav-timer').textContent = elapsed;
+    const ctrlTimer = document.getElementById('ctrl-timer');
+    if (ctrlTimer) ctrlTimer.textContent = elapsed;
+
+    // --- Countdown (7 min total) ---
+    const remaining = Math.max(0, INTERVIEW_TOTAL_SECONDS - timerSeconds);
+    const rm = String(Math.floor(remaining / 60)).padStart(2, '0');
+    const rs = String(remaining % 60).padStart(2, '0');
+    const countdown = `${rm}:${rs}`;
+    const ctrlCountdown = document.getElementById('ctrl-countdown');
+    if (ctrlCountdown) ctrlCountdown.textContent = countdown;
+
+    // Warn when < 60s left — turn countdown red
+    if (ctrlCountdown) {
+      ctrlCountdown.style.color = remaining <= 60 ? 'var(--accent-red)' : 'var(--text-primary)';
+    }
+
+    // Fill the time progress bar
+    const timePct = Math.min((timerSeconds / INTERVIEW_TOTAL_SECONDS) * 100, 100);
+    const timeBar = document.getElementById('ctrl-time-bar');
+    if (timeBar) timeBar.style.width = `${timePct}%`;
+
   }, 1000);
 }
 
@@ -402,8 +583,15 @@ function startTimer() {
 // ============================================================
 
 function confirmEndInterview() {
-  if (confirm('End the interview early? A partial assessment will still be generated.')) {
-    sendAnswer('[Candidate ended interview early]');
+  // Stop mic first if recording
+  if (isRecording) {
+    clearTimeout(silenceTimer);
+    isRecording = false;
+    if (recognition) recognition.stop();
+    stopRecordingUI();
+  }
+  if (confirm('End the interview early? Your assessment will be generated from answers so far.')) {
+    sendAnswer('[Candidate chose to end interview early]');
   }
 }
 

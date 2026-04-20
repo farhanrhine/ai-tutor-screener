@@ -2,7 +2,7 @@ import asyncio
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import FastAPI, HTTPException, BackgroundTasks
+from fastapi import FastAPI, HTTPException, BackgroundTasks, UploadFile, File
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
@@ -45,6 +45,37 @@ class MessageRequest(BaseModel):
 @app.get("/api/health")
 async def health():
     return {"status": "ok"}
+
+
+@app.post("/api/transcribe")
+async def transcribe_audio(file: UploadFile = File(...)):
+    """
+    Transcribe audio via Groq Whisper large-v3-turbo.
+    Accepts multipart/form-data with an audio file (webm/mp4/wav/ogg etc.)
+    Returns: {"text": "transcribed text"}
+    """
+    from groq import AsyncGroq
+    from config import GROQ_API_KEY
+
+    audio_bytes = await file.read()
+    if not audio_bytes:
+        raise HTTPException(status_code=400, detail="Empty audio file.")
+
+    filename = file.filename or "audio.webm"
+    content_type = file.content_type or "audio/webm"
+
+    client = AsyncGroq(api_key=GROQ_API_KEY)
+    try:
+        transcription = await client.audio.transcriptions.create(
+            file=(filename, audio_bytes, content_type),
+            model="whisper-large-v3-turbo",
+            response_format="json",
+            language="en",
+        )
+        text = transcription.text.strip() if transcription.text else ""
+        return {"text": text}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Transcription failed: {str(e)}")
 
 
 @app.post("/api/session/start")

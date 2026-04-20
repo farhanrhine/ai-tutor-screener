@@ -9,8 +9,8 @@ OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "")
 ELEVENLABS_API_KEY = os.getenv("ELEVENLABS_API_KEY", "")
 
 # --- Models ---
-CONVERSATION_MODEL = os.getenv("CONVERSATION_MODEL", "llama-3.1-70b-versatile")
-ASSESSMENT_MODEL = os.getenv("ASSESSMENT_MODEL", "qwen/qwen3-32b")
+CONVERSATION_MODEL = os.getenv("CONVERSATION_MODEL", "openai/gpt-oss-120b")
+ASSESSMENT_MODEL = os.getenv("ASSESSMENT_MODEL", "openai/gpt-oss-120b")
 
 # --- Database ---
 DATABASE_URL = os.getenv("DATABASE_URL", "./screener.db")
