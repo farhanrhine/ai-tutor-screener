@@ -8,7 +8,7 @@ GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
 
 # --- Models (all via Groq) ---
 CONVERSATION_MODEL = os.getenv("CONVERSATION_MODEL", "openai/gpt-oss-120b")
-ASSESSMENT_MODEL   = os.getenv("ASSESSMENT_MODEL",   "openai/gpt-oss-120b")
+ASSESSMENT_MODEL   = os.getenv("ASSESSMENT_MODEL",   "llama-3.3-70b-versatile")
 WHISPER_MODEL      = os.getenv("WHISPER_MODEL",       "whisper-large-v3-turbo")
 
 # --- Database ---
