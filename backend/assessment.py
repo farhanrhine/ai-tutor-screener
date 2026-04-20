@@ -73,6 +73,31 @@ async def generate_assessment(session_id: str) -> dict:
     transcript = _clean_transcript(messages)
     candidate_name = session["candidate_name"]
 
+    # --- SUBSTANCE CHECK ---
+    # Count how many lines in the transcript are from the 'Candidate'
+    substantive_candidate_lines = [line for line in transcript.split('\n') if line.startswith('Candidate:')]
+    
+    if len(substantive_candidate_lines) == 0:
+        print(f"[Assessment] Session {session_id[:8]}... | ZERO substantive candidate data. Returning automatic fail.")
+        
+        report = {
+            "candidate_name": candidate_name,
+            "session_id": session_id,
+            "recommendation": "Do not move forward",
+            "summary": "This interview contains zero substantive responses from the candidate. The session either ended prematurely or was left entirely blank. No evaluation possible.",
+            "dimensions": {
+                "communication_clarity": {"score": 0, "justification": "No data available.", "quote": "—"},
+                "warmth_and_patience":   {"score": 0, "justification": "No data available.", "quote": "—"},
+                "ability_to_simplify":   {"score": 0, "justification": "No data available.", "quote": "—"},
+                "english_fluency":       {"score": 0, "justification": "No data available.", "quote": "—"},
+                "candidate_fit":         {"score": 0, "justification": "No data available.", "quote": "—"},
+            },
+            "overall_score": 0.0,
+        }
+        await save_assessment(session_id, json.dumps(report))
+        await complete_session(session_id)
+        return report
+
     # Log transcript length for debugging
     word_count = len(transcript.split())
     print(f"[Assessment] Session {session_id[:8]}... | {len(messages)} raw messages → {word_count} words in cleaned transcript")

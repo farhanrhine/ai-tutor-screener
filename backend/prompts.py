@@ -146,6 +146,8 @@ Dimensions:
 5. candidate_fit — Overall "Cuemath Vibe" and instructional potential.
 
 EVALUATOR RULES:
+- ZERO DATA RULE: If the transcript contains ZERO substance from the candidate (e.g. they only said hello, or provided one-word answers), you MUST score every dimension 1/10 and set recommendation to "Do not move forward". 
+- DO NOT HALLUCINATE traits. If they didn't speak enough to prove a dimension, the score for that dimension is 0 or 1.
 - If a candidate provided a decent analogy (e.g. the exam-night analogy), they MUST score at least 5 in 'Ability to Simplify', even if their English is broken.
 - Do NOT let low English fluency automatically tank the 'Warmth' or 'Clarity' scores if the intent was clear.
 - If the interviewer (Sarah) was repetitive/looping, DO NOT penalize the candidate for getting confused or blunt at the end.
