@@ -1,6 +1,7 @@
-# AI Tutor Screener — Cuemath AI Builder Challenge
+# Cuemath AI Tutor Screener
+## Strategic Talent Evaluation via Generative Intelligence
 
-> A fully voice-driven AI interviewer that conducts adaptive tutor screening conversations and generates structured assessment reports — built for the Cuemath AI Builder Challenge.
+> A production-grade, voice-first screening engine designed to evaluate tutor pedagogy, communication, and instructional warmth through high-fidelity adaptive conversation.
 
 ---
 
@@ -16,21 +17,48 @@ A candidate visits the interview page, enters their name, and has a **5–7 minu
 
 ---
 
-## Demo Flow
+## System Architecture & Flow
 
-```
-Candidate enters name → Sarah introduces herself
-        ↓
-Candidate speaks → MediaRecorder captures audio
-        ↓
-Audio → Groq Whisper large-v3-turbo → accurate transcript
-        ↓
-Transcript → LLM (openai/gpt-oss-120b via Groq) → adaptive response
-     (LLM sees full conversation history + uncovered assessment dimensions)
-        ↓
-After ~6 exchanges → background assessment generation
-        ↓
-Assessment report with scores, quotes, recommendation
+```mermaid
+graph TD
+    %% Styling
+    classDef candidate fill:#E52b50,stroke:#fff,stroke-width:2px,color:#fff
+    classDef sarah fill:#222,stroke:#E52b50,stroke-width:2px,color:#fff
+    classDef groq fill:#f2f0eb,stroke:#dcdad2,stroke-width:1px,color:#1a1816
+    classDef logic fill:#fff,stroke:#1a1816,stroke-width:1px,color:#1a1816
+
+    subgraph Frontend [User Interface]
+        User((Candidate)):::candidate
+        UI[Editorial UI]:::logic
+    end
+
+    subgraph STT [Transcription]
+        Audio[MediaRecorder / Web Audio]:::logic
+        Whisper[Groq: whisper-large-v3-turbo]:::groq
+    end
+
+    subgraph Brain [Intelligence]
+        GPT[Groq: gpt-oss-120b]:::groq
+        Llama[Groq: llama-3.3-70b]:::groq
+    end
+
+    subgraph Storage [Persistence]
+        DB[(SQLite / aiosqlite)]:::logic
+    end
+
+    %% Flow
+    User -->|Voice Input| Audio
+    Audio -->|Raw Bytes| Whisper
+    Whisper -->|Accurate Text| GPT
+    
+    GPT <-->|Stateful Context| DB
+    GPT -->|Adaptive Response| UI
+    UI -->|TTS| User
+
+    %% Assessment Trigger
+    GPT -->|Turn Limit Reached| Llama
+    Llama -->|Rigorous Assessment| DB
+    DB -->|Static Report| UI
 ```
 
 ---
@@ -39,14 +67,14 @@ Assessment report with scores, quotes, recommendation
 
 | Layer | Technology |
 |---|---|
-| **Backend** | FastAPI (Python 3.11) + SQLite via aiosqlite |
+| **Backend** | FastAPI (Python 3.11) + SQLite (Stateless production architecture) |
 | **Package Manager** | `uv` |
-| **Conversation LLM** | `openai/gpt-oss-120b` via Groq |
-| **Assessment LLM** | `openai/gpt-oss-120b` via Groq |
-| **Voice Transcription** | Groq Whisper `whisper-large-v3-turbo` |
-| **Live Preview STT** | Web Speech API (Chrome/Edge, runs in parallel) |
-| **Frontend** | Modular ES6 + Vanilla DOM (Editorial Light + Midnight Dark toggles) |
-| **Deployment** | Render.com (free tier, single service) |
+| **Conversation LLM** | `openai/gpt-oss-120b` via Groq (Optimized for latent voice personality) |
+| **Assessment LLM** | `llama-3.3-70b-versatile` via Groq (High-rigor reasoning & scoring) |
+| **Voice Transcription** | Groq Whisper `whisper-large-v3-turbo` (Prompt-guided context) |
+| **Live Preview STT** | Web Speech API (Chrome/Edge parallel track) |
+| **Frontend** | Modular ES6 Modules + Vanilla CSS (Editorial Parchment Theme) |
+| **Deployment** | Render.com (Optimized for stateless horizontal scaling) |
 
 ---
 
@@ -120,7 +148,7 @@ GROQ_API_KEY=your_groq_api_key_here
 
 # All three models are served via Groq — one API key handles everything
 CONVERSATION_MODEL=openai/gpt-oss-120b
-ASSESSMENT_MODEL=openai/gpt-oss-120b
+ASSESSMENT_MODEL=llama-3.3-70b-versatile
 WHISPER_MODEL=whisper-large-v3-turbo
 
 DATABASE_URL=./screener.db
@@ -175,11 +203,12 @@ Whisper result takes precedence. Web Speech text is the fallback if transcriptio
 - **Garbage Collection Immunity:** Implemented global state tracking to prevent Chrome's aggressive garbage collection from terminating long `SpeechSynthesisUtterance` queries mid-sentence.
 - **Modular Isolation:** The frontend separates state layers (`api.js`, `audio.js`, `ui.js`) to ensure UI and Media tracking do not mutually lock each other up.
 
-### Assessment transcript cleaning
+### Assessment transcript cleaning & Integrity
 Before sending to the assessment LLM, the transcript is cleaned:
 - `[Candidate chose to end interview early]` markers removed
 - Repeat requests (`"can you repeat that?"`) filtered out
-- Only substantive candidate answers go to the evaluator
+- **Zero-Data Guardrail:** If the transcript contains no substantive candidate response, the system triggers an automatic fail without calling the LLM to prevent hallucinations.
+- **Data Sufficiency Check:** Minimum word count and turn-count checks ensure the LLM has evidence before scoring.
 
 ---
 
@@ -192,8 +221,10 @@ Before sending to the assessment LLM, the transcript is cleaned:
 | Candidate ends early | Immediate wrap-up + report generated from partial interview |
 | Very short answer (< 12 words) | Classified as `short` → follow-up question triggered |
 | Whisper transcription fails | Falls back to Web Speech accumulated text |
-| Server restart mid-session | Engine state rebuilt from DB on reconnect |
+| Server restart mid-session | Engine state rebuilt from DB on reconnect (Session Persistence) |
 | Non-Chrome browser | Warning banner shown; text input always available as fallback |
+| Interview has no data | **Hard-Fail Guardrail** → No hallucinated reports; score set to 0.0 |
+| PDF Export in Dark Mode | High-contrast Print Media overrides ensure black text on white paper |
 
 ---
 
