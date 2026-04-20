@@ -38,6 +38,7 @@ class StartSessionRequest(BaseModel):
 class MessageRequest(BaseModel):
     session_id: str
     candidate_message: str
+    time_remaining: str  # e.g. "05:40"
 
 
 # --- API Routes (all under /api) ---
@@ -124,7 +125,7 @@ async def send_message(req: MessageRequest, background_tasks: BackgroundTasks):
             role = "assistant" if msg["role"] == "interviewer" else "user"
             engine.messages.append({"role": role, "content": msg["content"]})
 
-    result = await engine.process_candidate_answer(req.candidate_message.strip())
+    result = await engine.process_candidate_answer(req.candidate_message.strip(), req.time_remaining)
 
     # Save interviewer response
     await save_message(req.session_id, "interviewer", result["interviewer_response"])

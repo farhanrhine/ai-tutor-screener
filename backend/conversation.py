@@ -92,7 +92,7 @@ class InterviewEngine:
     # PUBLIC: Process candidate answer → return Sarah's next response
     # ------------------------------------------------------------------
 
-    async def process_candidate_answer(self, answer: str) -> dict:
+    async def process_candidate_answer(self, answer: str, time_remaining: str = "07:00") -> dict:
 
         # --- Handle early-end ---
         if EARLY_END_MARKER in answer:
@@ -136,7 +136,7 @@ class InterviewEngine:
         # Decide: follow-up or next question or wrap-up
         if quality in ("vague", "short") and not self.follow_up_used:
             # Use a follow-up — let LLM decide what to dig into
-            response = await self._next_move(answer, force_followup=True)
+            response = await self._next_move(answer, time_remaining, force_followup=True)
             self.follow_up_used = True
 
         else:
@@ -149,7 +149,7 @@ class InterviewEngine:
                 self.interview_complete = True
                 response = await self._wrap_up()
             else:
-                response = await self._next_move(answer, force_followup=False)
+                response = await self._next_move(answer, time_remaining, force_followup=False)
 
         self.last_sarah_message = response
         self.messages.append({"role": "assistant", "content": response})
@@ -192,9 +192,11 @@ class InterviewEngine:
         prompt = DONT_KNOW_PROMPT.format(next_dimension_hint=next_hint)
         return await self._call_with_history(prompt)
 
-    async def _next_move(self, last_answer: str, force_followup: bool) -> str:
-        """Let the LLM decide what to say next, given full conversation context."""
-        # Format uncovered dimensions for the prompt
+    async def _next_move(self, last_answer: str, time_remaining: str, force_followup: bool = False) -> str:
+        """
+        Decide what to ask next using the dynamic NEXT_MOVE_PROMPT.
+        Sarah considers the full history, uncovered dimensions, and the clock.
+        """
         dim_lines = "\n".join(
             f"- {dim}: {ASSESSMENT_DIMENSIONS[dim]}"
             for dim in self.uncovered_dimensions
@@ -205,6 +207,7 @@ class InterviewEngine:
             exchange_count=self.exchange_count,
             uncovered_dimensions=dim_lines,
             last_answer=last_answer,
+            time_remaining=time_remaining
         )
 
         # If forcing follow-up, add instruction

@@ -11,7 +11,7 @@ let isRecording = false;
 let isSpeaking = false;
 let isProcessing = false;
 let questionCount = 0;
-const MAX_QUESTIONS = 6;
+const MAX_QUESTIONS = 7;
 let timerInterval = null;
 let timerSeconds = 0;
 let silenceTimer = null;
@@ -343,10 +343,15 @@ async function sendAnswer(text) {
   setProcessing(true);
 
   try {
+    const timeRemaining = document.getElementById('ctrl-countdown').textContent;
     const res = await fetch(API('/session/message'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ session_id: sessionId, candidate_message: text }),
+      body: JSON.stringify({ 
+        session_id: sessionId, 
+        candidate_message: text,
+        time_remaining: timeRemaining
+      }),
     });
     if (!res.ok) throw new Error(await res.text());
     const data = await res.json();
