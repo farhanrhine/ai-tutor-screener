@@ -601,8 +601,18 @@ function autoEndInterview() {
   }
   
   setStatus('idle', '⌛ Time is up!');
-  // Send the auto-end marker to the backend to wrap up
-  sendAnswer('[System: Interview ended automatically due to 7-minute time limit]');
+  
+  // If we are currently processing a message, wait for it to finish then send end signal
+  if (isProcessing) {
+    const waitInterval = setInterval(() => {
+      if (!isProcessing) {
+        clearInterval(waitInterval);
+        sendAnswer('[System: Interview ended automatically due to 7-minute time limit]');
+      }
+    }, 1000);
+  } else {
+    sendAnswer('[System: Interview ended automatically due to 7-minute time limit]');
+  }
 }
 
 // ============================================================
