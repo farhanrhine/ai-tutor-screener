@@ -135,7 +135,7 @@
       </div>
     </div>
     <div style="display:flex; align-items:center; gap:16px;">
-      <a href="index.html" class="btn btn-primary" style="padding:10px 20px">
+      <a href="index.html" target="_blank" class="btn btn-primary" style="padding:10px 20px">
         <svg viewBox="0 0 24 24" fill="none" class="icon" style="width:16px;height:16px;margin-right:-4px;"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
         New Interview
       </a>
@@ -218,7 +218,7 @@ async function loadDashboard() {
           <div class="empty-icon"><svg viewBox="0 0 24 24" fill="none" class="icon"><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/><path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5M12 19v3M8 22h8"/></svg></div>
           <h3 class="font-display">No interviews yet</h3>
           <p style="color:var(--ink-soft); font-size:1rem; margin-top:-8px;">Start the first screening interview to see results here.</p>
-          <a href="index.html" class="btn btn-primary" style="margin-top:8px">Start Interview</a>
+          <a href="index.html" target="_blank" class="btn btn-primary" style="margin-top:8px">Start Interview</a>
         </div>`;
       return;
     }
@@ -276,7 +276,7 @@ async function loadDashboard() {
       }
 
       const actionHtml = s.status === 'completed'
-        ? `<a href="report.html?session_id=${s.id}" class="btn btn-ghost" style="padding:6px 14px; font-size:0.82rem">View Report →</a>`
+        ? `<a href="report.html?session_id=${s.id}" target="_blank" class="btn btn-ghost" style="padding:6px 14px; font-size:0.82rem">View Report →</a>`
         : '<span style="font-size:0.85rem; color:var(--ink-muted); font-weight:500;">In progress…</span>';
 
       const tr = document.createElement('tr');

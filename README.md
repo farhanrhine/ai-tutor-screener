@@ -3,7 +3,7 @@
 
 > A production-grade, voice-first screening engine designed to evaluate tutor pedagogy, communication, and instructional warmth through high-fidelity adaptive conversation.
 
-**<a href="https://ai-tutor-screener-29ln.onrender.com/" target="_blank">🚀 Live Demo</a>**
+<a href="https://ai-tutor-screener-29ln.onrender.com/" target="_blank">**🚀 Live Demo**</a>
 
 > [!IMPORTANT]
 > **Reviewer Notes:**
@@ -245,6 +245,6 @@ Before sending to the assessment LLM, the transcript is cleaned:
 
 ---
 
-*Built and documented with the strategic help of **Google Antigravity** and **Claude AI**.*
+*Built by Farhan and documented with the strategic help of **Google Antigravity** and **Claude AI**.*
 
 
