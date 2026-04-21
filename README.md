@@ -3,7 +3,7 @@
 
 > A production-grade, voice-first screening engine designed to evaluate tutor pedagogy, communication, and instructional warmth through high-fidelity adaptive conversation.
 
-**[🚀 Live Demo](https://ai-tutor-screener-29ln.onrender.com/)**
+**<a href="https://ai-tutor-screener-29ln.onrender.com/" target="_blank">🚀 Live Demo</a>**
 
 > [!IMPORTANT]
 > **Reviewer Notes:**
