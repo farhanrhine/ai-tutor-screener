@@ -202,7 +202,7 @@ It then decides **what to ask next** and **how to phrase it** based on the candi
 
 ### Dual-track voice recording
 Two things run in parallel when you click the mic:
-1. **MediaRecorder** — captures raw audio → sent to Groq Whisper for accurate transcription
+1. **MediaRecorder** — captures raw audio → sent to OpenAI-Whisper(SST model)for accurate transcription
 2. **Web Speech API** — provides live preview text in the input box
 
 Whisper result takes precedence. Web Speech text is the fallback if transcription fails.
