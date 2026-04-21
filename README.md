@@ -9,8 +9,8 @@
 > **Reviewer Notes:**
 > - **Browser:** Use **Chrome or Edge** for the full voice experience (Web Speech live preview).
 > - **Cold Start:** As this is on a free tier, please allow **30-60 seconds** for the first load to "wake up" the server.
-> - **Data Persistence:** The demo uses a volatile SQLite database. Records are reset during redeploys—**please export reports to PDF (Ctrl+P)** to save your results permanently.
-> - **Assessments:** Reports take ~15 seconds to generate in the background after the interview ends.
+> - **Data Persistence:** The demo uses a volatile SQLite database. Records are reset during redeploys—**please export reports to PDF** to save your results permanently.
+> - **Assessments:** Reports take 5-15 seconds to generate in the background after the interview ends.
 
 ---
 
@@ -208,6 +208,7 @@ Two things run in parallel when you click the mic:
 Whisper result takes precedence. Web Speech text is the fallback if transcription fails.
 
 ### Production Grade Architecture
+- **FastAPI Static Mounting:** Uses FastAPI's `StaticFiles` capability to "mount" and serve the entire frontend as a static directory from the root URL. This unified architecture ensures zero CORS errors, simplifies deployment on Render's free tier, and results in a highly efficient, single-unit codebase.
 - **Stateless Database Backend:** The system utilizes a worker-safe SQLite persistence layer rather than volatile in-memory caches, enabling horizontal worker scaling and instant session recovery on disconnects.
 - **Context Token Optimization:** Conversational routing paths are strictly injected natively as `system` messages mapping the candidate's exact turn history and runtime constraints, protecting against temporal persona-drift.
 - **Garbage Collection Immunity:** Implemented global state tracking to prevent Chrome's aggressive garbage collection from terminating long `SpeechSynthesisUtterance` queries mid-sentence.
@@ -243,5 +244,7 @@ Before sending to the assessment LLM, the transcript is cleaned:
 | PDF Export in Dark Mode | High-contrast Print Media overrides ensure black text on white paper |
 
 ---
+
+*Built and documented with the strategic help of **Google Antigravity** and **Claude AI**.*
 
 
