@@ -213,6 +213,12 @@ Whisper result takes precedence. Web Speech text is the fallback if transcriptio
 - **Garbage Collection Immunity:** Implemented global state tracking to prevent Chrome's aggressive garbage collection from terminating long `SpeechSynthesisUtterance` queries mid-sentence.
 - **Modular Isolation:** The frontend separates state layers (`api.js`, `audio.js`, `ui.js`) to ensure UI and Media tracking do not mutually lock each other up.
 
+### Zero-Framework "Vanilla" Frontend
+The frontend is intentionally built using **Pure Vanilla JS** and **Vanilla CSS** instead of frameworks like **Next.js**, **React**. 
+- **Lightning Performance:** Instant page loads and zero "Hydration" delay because the browser doesn't have to download and execute large JavaScript bundles typical of **Next.js** applications.
+- **Free-Tier Optimized:** By avoiding a complex Node.js build step (like `next build`), the project stays extremely lightweight—critical for high reliability and fast cold-starts on Render.com's free tier.
+- **Sustainability:** Uses native ES6 modules and CSS variables, ensuring the codebase is easy to maintain and future-proof without the version-locked dependencies often found in framework ecosystems.
+
 ### Assessment transcript cleaning & Integrity
 Before sending to the assessment LLM, the transcript is cleaned:
 - `[Candidate chose to end interview early]` markers removed
