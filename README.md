@@ -113,7 +113,8 @@ ai-tutor-screener/
 │   ├── assessment.py     # Structured assessment generator with transcript cleaning
 │   ├── database.py       # SQLite operations (sessions, messages, assessments)
 │   ├── prompts.py        # All LLM prompts (no hardcoded questions)
-│   └── config.py         # Environment config
+│   ├── config.py         # Environment config
+│   └── .env.example      # Template for environment variables (API keys, models)
 ├── frontend/
 │   ├── index.html        # Interview page (progress ring, dual timer, mic UI)
 │   ├── report.html       # Assessment report (print-ready PDF)
